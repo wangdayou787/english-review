@@ -38,12 +38,14 @@
 
   <% if (activeCycles.length > 0) { %>
     <h2 class="mb-1 mt-2">周期复习提醒</h2>
-    <% activeCycles.forEach(c => { %>
-      <div class="reminder-row">
-        <span>📅 <%= c.cycle_type === 'weekly' ? '本周' : c.cycle_type === 'biweekly' ? '双周' : '本月' %>复习日 — 建议完成周期全覆盖复习</span>
-        <a href="/practice/start?cycle=<%= c.cycle_type %>" class="btn btn-sm btn-primary">开始复习</a>
-      </div>
-    <% }) %>
+    <div class="reminder-list">
+      <% activeCycles.forEach(c => { %>
+        <div class="reminder-row">
+          <span>📅 <%= c.cycle_type === 'weekly' ? '本周' : c.cycle_type === 'biweekly' ? '双周' : '本月' %>复习日 — 建议完成周期全覆盖复习</span>
+          <a href="/practice/start?cycle=<%= c.cycle_type %>" class="btn btn-sm btn-primary">开始复习</a>
+        </div>
+      <% }) %>
+    </div>
   <% } %>
 <% } %>
 

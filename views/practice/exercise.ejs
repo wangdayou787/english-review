@@ -83,7 +83,12 @@ function selectWord(el, idx) {
   const current = hiddenInput.value ? hiddenInput.value.split(' ') : [];
   current.push(word);
   hiddenInput.value = current.join(' ');
-  resultDiv.innerHTML = current.map(w => '<span>' + w + '</span>').join('');
+  resultDiv.replaceChildren();
+  current.forEach(w => {
+    const chip = document.createElement('span');
+    chip.textContent = w;
+    resultDiv.appendChild(chip);
+  });
   el.style.opacity = '0.4';
   el.style.pointerEvents = 'none';
 }
