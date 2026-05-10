@@ -1,0 +1,19 @@
+<div class="form-container">
+  <h1>登录</h1>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error"><%= error %></div>
+  <% } %>
+  <form method="POST" action="/login">
+    <input type="hidden" name="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>">
+    <div class="form-group">
+      <label for="username">用户名</label>
+      <input type="text" id="username" name="username" required autofocus>
+    </div>
+    <div class="form-group">
+      <label for="password">密码</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">登录</button>
+  </form>
+  <p class="form-footer">还没有账号？<a href="/register">立即注册</a></p>
+</div>

@@ -1,0 +1,71 @@
+<p class="mb-1">
+  <a href="/admin/textbooks">&larr; 课本列表</a> →
+  <a href="/admin/textbooks/<%= textbook.id %>/units"><%= textbook.name %></a> →
+  <strong><%= unit.name %></strong>
+</p>
+<h1><%= unit.name %></h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+<% if (typeof success !== 'undefined' && success) { %>
+  <div class="alert alert-success"><%= success %></div>
+<% } %>
+
+<!-- Single item form -->
+<form method="POST" action="/admin/units/<%= unit.id %>/items" class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <h3 class="mb-1">添加条目</h3>
+  <div class="form-group">
+    <label>类型</label>
+    <select name="type" required>
+      <option value="word">单词 (word)</option>
+      <option value="phrase">短语 (phrase)</option>
+      <option value="grammar">语法 (grammar)</option>
+    </select>
+  </div>
+  <div class="form-group"><input type="text" name="english" placeholder="英文"></div>
+  <div class="form-group"><input type="text" name="chinese" placeholder="中文释义"></div>
+  <div class="form-group"><input type="text" name="pos" placeholder="词性（可选）"></div>
+  <div class="form-group"><input type="text" name="example" placeholder="例句（可选）"></div>
+  <button type="submit" class="btn btn-primary">添加</button>
+</form>
+
+<!-- Batch import -->
+<details class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <summary style="cursor:pointer;font-weight:bold;">批量导入</summary>
+  <form method="POST" action="/admin/items/batch" style="margin-top:0.5rem;">
+    <input type="hidden" name="unit_id" value="<%= unit.id %>">
+    <div class="form-group">
+      <label>每行一条，格式：英文 | 中文 | 类型 | 词性(可选) | 例句(可选)</label>
+      <textarea name="data" rows="6" placeholder="apple | 苹果 | word | 名词 | I like apples"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">批量导入</button>
+  </form>
+</details>
+
+<!-- Items list -->
+<% if (items.length === 0) { %>
+  <p class="text-muted">暂无条目</p>
+<% } else { %>
+  <table>
+    <thead>
+      <tr><th>类型</th><th>英文</th><th>中文</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    <% items.forEach(item => { %>
+      <tr>
+        <td><%= item.type %></td>
+        <td><%= item.english || '-' %></td>
+        <td><%= item.chinese || '-' %></td>
+        <td>
+          <a href="/admin/items/<%= item.id %>/edit" class="btn btn-sm btn-primary">编辑</a>
+          <form method="POST" action="/admin/items/<%= item.id %>/delete" style="display:inline;"
+                onsubmit="return confirm('确定删除？')">
+            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+<% } %>

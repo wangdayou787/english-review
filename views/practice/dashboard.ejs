@@ -1,0 +1,50 @@
+<h1>复习主页</h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<% if (!hasItems) { %>
+  <div class="alert alert-error">暂无复习内容，请联系管理员添加单词和短语。</div>
+<% } else { %>
+  <div class="stats-cards" style="display:flex;gap:1rem;margin-bottom:1.5rem;">
+    <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+      <div style="font-size:2rem;font-weight:bold;color:#4a90d9;"><%= consecutive %></div>
+      <div>连续打卡天数</div>
+    </div>
+    <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+      <div style="font-size:2rem;font-weight:bold;color:#27ae60;"><%= totalScore %></div>
+      <div>累计积分</div>
+    </div>
+  </div>
+
+  <h2 class="mb-1">今日进度</h2>
+  <div style="background:#fff;padding:1rem;border-radius:8px;margin-bottom:1.5rem;">
+    <div class="mb-1">
+      <strong>单词：</strong><%= checkIn.words_done || 0 %> / <%= config.daily_words %> 
+      <progress value="<%= checkIn.words_done || 0 %>" max="<%= config.daily_words %>" style="width:100%;height:10px;"></progress>
+    </div>
+    <div class="mb-1">
+      <strong>短语：</strong><%= checkIn.phrases_done || 0 %> / <%= config.daily_phrases %>
+      <progress value="<%= checkIn.phrases_done || 0 %>" max="<%= config.daily_phrases %>" style="width:100%;height:10px;"></progress>
+    </div>
+    <div>
+      <strong>语法：</strong><%= checkIn.grammar_done || 0 %> / <%= config.daily_grammar %>
+      <progress value="<%= checkIn.grammar_done || 0 %>" max="<%= config.daily_grammar %>" style="width:100%;height:10px;"></progress>
+    </div>
+  </div>
+
+  <a href="/practice/start" class="btn btn-primary" style="display:block;text-align:center;padding:1rem;font-size:1.2rem;">开始今日复习</a>
+
+  <% if (activeCycles.length > 0) { %>
+    <h2 class="mb-1" style="margin-top:2rem;">周期复习提醒</h2>
+    <% activeCycles.forEach(c => { %>
+      <div style="background:#fff9e6;padding:1rem;border-radius:8px;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;">
+        <span>📅 <%= c.cycle_type === 'weekly' ? '本周' : c.cycle_type === 'biweekly' ? '双周' : '本月' %>复习日 — 建议完成周期全覆盖复习</span>
+        <a href="/practice/start?cycle=<%= c.cycle_type %>" class="btn btn-sm btn-primary">开始复习</a>
+      </div>
+    <% }) %>
+  <% } %>
+<% } %>
+
+<p class="mt-2"><a href="/stats">📊 查看学习统计</a></p>

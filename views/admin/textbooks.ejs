@@ -1,0 +1,41 @@
+<h1 class="mb-2">课本管理</h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<form method="POST" action="/admin/textbooks" class="mb-2">
+  <div class="form-group" style="display:flex; gap:0.5rem;">
+    <input type="text" name="name" placeholder="输入课本名称（如：人教版七年级上册）" required style="flex:1;">
+    <button type="submit" class="btn btn-primary">添加课本</button>
+  </div>
+</form>
+
+<% if (textbooks.length === 0) { %>
+  <p class="text-muted">暂无课本，请创建第一个课本</p>
+<% } else { %>
+  <table>
+    <thead>
+      <tr><th>课本名称</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    <% textbooks.forEach(tb => { %>
+      <tr>
+        <td>
+          <a href="/admin/textbooks/<%= tb.id %>/units"><strong><%= tb.name %></strong></a>
+        </td>
+        <td>
+          <form method="POST" action="/admin/textbooks/<%= tb.id %>/delete" style="display:inline;"
+                onsubmit="return confirm('删除课本将同时删除其下所有单元和条目，确定继续？')">
+            <button type="submit" class="btn btn-danger btn-sm">删除</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<div class="mt-2">
+  <a href="/admin/settings">⚙ 系统设置</a>
+</div>

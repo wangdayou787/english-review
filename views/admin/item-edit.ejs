@@ -1,0 +1,28 @@
+<p class="mb-1">
+  <a href="/admin/textbooks">&larr; 课本列表</a> →
+  <a href="/admin/textbooks/<%= textbook.id %>/units"><%= textbook.name %></a> →
+  <a href="/admin/units/<%= unit.id %>/items"><%= unit.name %></a> →
+  <strong>编辑条目</strong>
+</p>
+<h1>编辑条目</h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<form method="POST" action="/admin/items/<%= item.id %>/edit" style="background:#fff;padding:1rem;border-radius:8px;">
+  <div class="form-group">
+    <label>类型</label>
+    <select name="type" required>
+      <option value="word" <%= item.type === 'word' ? 'selected' : '' %>>单词</option>
+      <option value="phrase" <%= item.type === 'phrase' ? 'selected' : '' %>>短语</option>
+      <option value="grammar" <%= item.type === 'grammar' ? 'selected' : '' %>>语法</option>
+    </select>
+  </div>
+  <div class="form-group"><label>英文</label><input type="text" name="english" value="<%= item.english || '' %>"></div>
+  <div class="form-group"><label>中文</label><input type="text" name="chinese" value="<%= item.chinese || '' %>"></div>
+  <div class="form-group"><label>词性</label><input type="text" name="pos" value="<%= item.pos || '' %>"></div>
+  <div class="form-group"><label>例句</label><input type="text" name="example" value="<%= item.example || '' %>"></div>
+  <button type="submit" class="btn btn-primary">保存</button>
+  <a href="/admin/units/<%= unit.id %>/items" class="btn">取消</a>
+</form>

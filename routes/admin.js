@@ -1,0 +1,168 @@
+const express = require('express');
+const router = express.Router();
+const queries = require('../db/queries');
+const { requireAdmin } = require('../middleware/auth');
+
+// Reuse renderWithLayout helper
+function renderWithLayout(res, view, data, title) {
+  res.render(view, data, (err, body) => {
+    if (err) return res.status(500).send('Render error');
+    res.render('layout', { title, body });
+  });
+}
+
+router.use(requireAdmin);
+
+// ── Textbooks ────────────────────────────────────────────────────
+router.get('/admin', (req, res) => res.redirect('/admin/textbooks'));
+
+router.get('/admin/textbooks', (req, res) => {
+  const textbooks = queries.getTextbooks(req.app.locals.db);
+  renderWithLayout(res, 'admin/textbooks', { textbooks, error: null }, '课本管理');
+});
+
+router.post('/admin/textbooks', (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    const textbooks = queries.getTextbooks(req.app.locals.db);
+    return renderWithLayout(res, 'admin/textbooks', { textbooks, error: '课本名称不能为空' }, '课本管理');
+  }
+  queries.createTextbook(req.app.locals.db, name.trim());
+  res.redirect('/admin/textbooks');
+});
+
+router.post('/admin/textbooks/:id/delete', (req, res) => {
+  queries.deleteTextbook(req.app.locals.db, req.params.id);
+  res.redirect('/admin/textbooks');
+});
+
+// ── Units ────────────────────────────────────────────────────────
+router.get('/admin/textbooks/:id/units', (req, res) => {
+  const db = req.app.locals.db;
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(req.params.id);
+  if (!textbook) return res.redirect('/admin/textbooks');
+  const units = queries.getUnitsByTextbook(db, req.params.id);
+  renderWithLayout(res, 'admin/units', { textbook, units, error: null }, textbook.name);
+});
+
+router.post('/admin/textbooks/:id/units', (req, res) => {
+  const { name } = req.body;
+  const db = req.app.locals.db;
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(req.params.id);
+  if (!name || !name.trim()) {
+    const units = queries.getUnitsByTextbook(db, req.params.id);
+    return renderWithLayout(res, 'admin/units', { textbook, units, error: '单元名称不能为空' }, textbook.name);
+  }
+  queries.createUnit(db, req.params.id, name.trim());
+  res.redirect(`/admin/textbooks/${req.params.id}/units`);
+});
+
+router.post('/admin/units/:id/delete', (req, res) => {
+  const unit = queries.getUnitById(req.app.locals.db, req.params.id);
+  if (!unit) return res.redirect('/admin/textbooks');
+  queries.deleteUnit(req.app.locals.db, req.params.id);
+  res.redirect(`/admin/textbooks/${unit.textbook_id}/units`);
+});
+
+// ── Items ────────────────────────────────────────────────────────
+router.get('/admin/units/:id/items', (req, res) => {
+  const db = req.app.locals.db;
+  const unit = queries.getUnitById(db, req.params.id);
+  if (!unit) return res.redirect('/admin/textbooks');
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+  const items = queries.getItemsByUnit(db, req.params.id);
+  renderWithLayout(res, 'admin/items', { textbook, unit, items, error: null }, unit.name);
+});
+
+router.post('/admin/units/:id/items', (req, res) => {
+  const db = req.app.locals.db;
+  const unit = queries.getUnitById(db, req.params.id);
+  if (!unit) return res.redirect('/admin/textbooks');
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+
+  const { type, english, chinese, pos, example } = req.body;
+  if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
+    const items = queries.getItemsByUnit(db, req.params.id);
+    return renderWithLayout(res, 'admin/items', { textbook, unit, items, error: '英文和中文不能为空' }, unit.name);
+  }
+  queries.createItem(db, { unitId: parseInt(req.params.id), type, english, chinese, pos, example });
+  res.redirect(`/admin/units/${req.params.id}/items`);
+});
+
+router.post('/admin/items/batch', (req, res) => {
+  const db = req.app.locals.db;
+  const { unit_id, data } = req.body;
+  const unit = queries.getUnitById(db, unit_id);
+  if (!unit) return res.redirect('/admin/textbooks');
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+
+  const lines = data.split('\n').filter(l => l.trim());
+  const result = queries.batchCreateItems(db, unit_id, lines);
+
+  const items = queries.getItemsByUnit(db, unit_id);
+  const msg = result.errors.length > 0
+    ? `成功导入 ${result.count} 条；${result.errors.length} 条失败：${result.errors.join('；')}`
+    : `成功导入 ${result.count} 条`;
+  renderWithLayout(res, 'admin/items', { textbook, unit, items, error: null, success: msg }, unit.name);
+});
+
+router.get('/admin/items/:id/edit', (req, res) => {
+  const db = req.app.locals.db;
+  const item = queries.getItemById(db, req.params.id);
+  if (!item) return res.redirect('/admin/textbooks');
+  const unit = queries.getUnitById(db, item.unit_id);
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+  renderWithLayout(res, 'admin/item-edit', { textbook, unit, item, error: null }, '编辑条目');
+});
+
+router.post('/admin/items/:id/edit', (req, res) => {
+  const db = req.app.locals.db;
+  const item = queries.getItemById(db, req.params.id);
+  if (!item) return res.redirect('/admin/textbooks');
+  const { type, english, chinese, pos, example } = req.body;
+  queries.updateItem(db, req.params.id, { type, english, chinese, pos, example });
+  res.redirect(`/admin/units/${item.unit_id}/items`);
+});
+
+router.post('/admin/items/:id/delete', (req, res) => {
+  const item = queries.getItemById(req.app.locals.db, req.params.id);
+  if (!item) return res.redirect('/admin/textbooks');
+  queries.deleteItem(req.app.locals.db, req.params.id);
+  res.redirect(`/admin/units/${item.unit_id}/items`);
+});
+
+// ── Settings ─────────────────────────────────────────────────────
+router.get('/admin/settings', (req, res) => {
+  const db = req.app.locals.db;
+  const config = queries.getConfig(db);
+  const cycles = queries.getReviewCycles(db);
+  renderWithLayout(res, 'admin/settings', { config, cycles, error: null, success: null }, '系统设置');
+});
+
+router.post('/admin/settings', (req, res) => {
+  const db = req.app.locals.db;
+  const { daily_words, daily_phrases, daily_grammar } = req.body;
+  queries.setConfig(db, 'daily_words', daily_words);
+  queries.setConfig(db, 'daily_phrases', daily_phrases);
+  queries.setConfig(db, 'daily_grammar', daily_grammar);
+  res.redirect('/admin/settings');
+});
+
+router.post('/admin/cycles', (req, res) => {
+  const db = req.app.locals.db;
+  const { cycle_type, trigger_days, cover_days } = req.body;
+  queries.createReviewCycle(db, { cycle_type, trigger_days, cover_days: parseInt(cover_days) });
+  res.redirect('/admin/settings');
+});
+
+router.post('/admin/cycles/:id/toggle', (req, res) => {
+  queries.toggleReviewCycle(req.app.locals.db, req.params.id);
+  res.redirect('/admin/settings');
+});
+
+router.post('/admin/cycles/:id/delete', (req, res) => {
+  queries.deleteReviewCycle(req.app.locals.db, req.params.id);
+  res.redirect('/admin/settings');
+});
+
+module.exports = router;

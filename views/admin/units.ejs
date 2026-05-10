@@ -1,0 +1,38 @@
+<p class="mb-1"><a href="/admin/textbooks">&larr; 返回课本列表</a></p>
+<h1><%= textbook.name %></h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<form method="POST" action="/admin/textbooks/<%= textbook.id %>/units" class="mb-2">
+  <div class="form-group" style="display:flex; gap:0.5rem;">
+    <input type="text" name="name" placeholder="输入单元名称（如：Unit 1 Hello）" required style="flex:1;">
+    <button type="submit" class="btn btn-primary">添加单元</button>
+  </div>
+</form>
+
+<% if (units.length === 0) { %>
+  <p class="text-muted">暂无单元，请添加</p>
+<% } else { %>
+  <table>
+    <thead>
+      <tr><th>单元名称</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    <% units.forEach(u => { %>
+      <tr>
+        <td>
+          <a href="/admin/units/<%= u.id %>/items"><strong><%= u.name %></strong></a>
+        </td>
+        <td>
+          <form method="POST" action="/admin/units/<%= u.id %>/delete" style="display:inline;"
+                onsubmit="return confirm('删除单元将同时删除其下所有条目，确定继续？')">
+            <button type="submit" class="btn btn-danger btn-sm">删除</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+<% } %>

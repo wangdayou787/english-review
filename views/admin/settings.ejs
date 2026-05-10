@@ -1,0 +1,68 @@
+<h1>系统设置</h1>
+
+<% if (typeof error !== 'undefined' && error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (typeof success !== 'undefined' && success) { %><div class="alert alert-success"><%= success %></div><% } %>
+
+<!-- Daily quotas -->
+<h2 class="mb-1">每日复习配额</h2>
+<form method="POST" action="/admin/settings" class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;">
+  <div class="form-group"><label>每日单词数</label><input type="number" name="daily_words" value="<%= config.daily_words || 20 %>" min="1"></div>
+  <div class="form-group"><label>每日短语数</label><input type="number" name="daily_phrases" value="<%= config.daily_phrases || 5 %>" min="1"></div>
+  <div class="form-group"><label>每日语法数</label><input type="number" name="daily_grammar" value="<%= config.daily_grammar || 3 %>" min="1"></div>
+  <button type="submit" class="btn btn-primary">保存配额</button>
+</form>
+
+<!-- Review cycles -->
+<h2 class="mb-1">复习周期规则</h2>
+<table class="mb-2">
+  <thead><tr><th>类型</th><th>触发日</th><th>覆盖天数</th><th>状态</th><th>操作</th></tr></thead>
+  <tbody>
+  <% cycles.forEach(c => { %>
+    <tr>
+      <td><%= c.cycle_type === 'weekly' ? '每周' : c.cycle_type === 'biweekly' ? '双周' : '每月' %></td>
+      <td><%= c.trigger_days %></td>
+      <td><%= c.cover_days === 0 ? '当月' : c.cover_days + '天' %></td>
+      <td><%= c.enabled ? '✅ 启用' : '⛔ 禁用' %></td>
+      <td>
+        <% if (!c.is_default) { %>
+          <form method="POST" action="/admin/cycles/<%= c.id %>/toggle" style="display:inline;">
+            <button class="btn btn-sm <%= c.enabled ? 'btn-danger' : 'btn-primary' %>"><%= c.enabled ? '禁用' : '启用' %></button>
+          </form>
+          <form method="POST" action="/admin/cycles/<%= c.id %>/delete" style="display:inline;"
+                onsubmit="return confirm('确定删除？')">
+            <button class="btn btn-sm btn-danger">删除</button>
+          </form>
+        <% } else { %>
+          <span class="text-muted">系统预设</span>
+        <% } %>
+      </td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+
+<!-- Add custom cycle -->
+<details style="background:#fff;padding:1rem;border-radius:8px;margin-bottom:1rem;">
+  <summary style="cursor:pointer;font-weight:bold;">添加自定义周期规则</summary>
+  <form method="POST" action="/admin/cycles" style="margin-top:0.5rem;">
+    <div class="form-group">
+      <label>类型</label>
+      <select name="cycle_type" required>
+        <option value="weekly">每周</option>
+        <option value="biweekly">双周（偶数周）</option>
+        <option value="monthly">每月</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>触发日（JSON数组，0=周日,6=周六；monthly时填日子如[28,29,30,31]）</label>
+      <input type="text" name="trigger_days" value="[6,7]" required>
+    </div>
+    <div class="form-group">
+      <label>覆盖天数（0=当月自然日）</label>
+      <input type="number" name="cover_days" value="7" min="0">
+    </div>
+    <button type="submit" class="btn btn-primary">添加规则</button>
+  </form>
+</details>
+
+<p><a href="/admin/textbooks">&larr; 返回课本管理</a></p>

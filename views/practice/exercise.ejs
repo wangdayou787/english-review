@@ -1,0 +1,91 @@
+<h1><%= title %></h1>
+<p class="text-muted mb-1">
+  共 <%= totalItems %> 题
+  <% if (totalPages > 1) { %>(第 <%= page %> / <%= totalPages %> 页)<% } %>
+</p>
+
+<form id="exercise-form" method="POST" action="/practice/submit">
+  <% if (typeof cycleType !== 'undefined' && cycleType) { %>
+    <input type="hidden" name="cycle" value="<%= cycleType %>">
+  <% } %>
+
+  <% exercises.forEach((ex, idx) => { %>
+    <div style="background:#fff;padding:1rem;border-radius:8px;margin-bottom:0.75rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <strong>第 <%= idx + 1 %> 题</strong>
+        <span class="text-muted">
+          <% if (ex.exercise_type === 'en2cn') { %>📖 英译中
+          <% } else if (ex.exercise_type === 'cn2en') { %>✏️ 中译英
+          <% } else if (ex.exercise_type === 'listening') { %>🔊 听音辨义
+          <% } else if (ex.exercise_type === 'sentence') { %>🧩 连词成句
+          <% } %>
+        </span>
+      </div>
+
+      <div class="mb-1" style="font-size:1.2rem;font-weight:600;"><%= ex.question %></div>
+
+      <% if (ex.exercise_type === 'listening') { %>
+        <button type="button" class="btn btn-sm mb-1" onclick="speak('<%= ex.question.replace(/'/g, "\\'") %>')">🔊 播放发音</button>
+      <% } %>
+
+      <!-- Hidden fields -->
+      <input type="hidden" name="answers[<%= idx %>][item_id]" value="<%= ex.item_id %>">
+      <input type="hidden" name="answers[<%= idx %>][exercise_type]" value="<%= ex.exercise_type %>">
+
+      <% if (ex.options) { %>
+        <!-- Multiple choice -->
+        <% ex.options.forEach((opt, oi) => { %>
+          <label style="display:block;padding:0.4rem 0.5rem;cursor:pointer;border-radius:4px;margin-bottom:0.2rem;"
+                 onmouseover="this.style.background='#eef5ff'" onmouseout="this.style.background=''">
+            <input type="radio" name="answers[<%= idx %>][answer]" value="<%= opt %>" required>
+            <%= String.fromCharCode(65 + oi) %>. <%= opt %>
+          </label>
+        <% }) %>
+      <% } else if (ex.words) { %>
+        <!-- Sentence ordering -->
+        <div id="sentence-<%= idx %>" class="sentence-order" style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+          <% ex.words.forEach(w => { %>
+            <span class="word-chip" onclick="selectWord(this, <%= idx %>)" style="background:#eef5ff;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;user-select:none;"><%= w %></span>
+          <% }) %>
+        </div>
+        <div id="sentence-result-<%= idx %>" style="min-height:30px;margin-top:0.5rem;padding:0.3rem;border:1px dashed #ccc;border-radius:4px;"></div>
+        <input type="hidden" name="answers[<%= idx %>][answer]" id="sentence-input-<%= idx %>">
+      <% } else { %>
+        <!-- Text input -->
+        <input type="text" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+      <% } %>
+    </div>
+  <% }) %>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+    <% if (page < totalPages) { %>
+      <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn">下一页</a>
+    <% } else { %>
+      <span></span>
+    <% } %>
+    <button type="submit" class="btn btn-primary" style="padding:0.75rem 2rem;font-size:1.1rem;">提交答案</button>
+  </div>
+</form>
+
+<script>
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.85;
+    speechSynthesis.speak(utterance);
+  }
+}
+
+function selectWord(el, idx) {
+  const resultDiv = document.getElementById('sentence-result-' + idx);
+  const hiddenInput = document.getElementById('sentence-input-' + idx);
+  const word = el.textContent.trim();
+  const current = hiddenInput.value ? hiddenInput.value.split(' ') : [];
+  current.push(word);
+  hiddenInput.value = current.join(' ');
+  resultDiv.innerHTML = current.map(w => '<span style="background:#d4edda;padding:0.2rem 0.4rem;border-radius:3px;margin-right:0.2rem;">' + w + '</span>').join('');
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+}
+</script>

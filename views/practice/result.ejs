@@ -1,0 +1,41 @@
+<h1>练习结果</h1>
+
+<div class="stats-cards" style="display:flex;gap:1rem;margin-bottom:1.5rem;">
+  <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+    <div style="font-size:2rem;font-weight:bold;color:#4a90d9;"><%= score %></div>
+    <div>获得积分</div>
+  </div>
+  <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+    <div style="font-size:2rem;font-weight:bold;color:#27ae60;"><%= totalCorrect %> / <%= totalQuestions %></div>
+    <div>正确率</div>
+  </div>
+</div>
+
+<% if (perfectBonus > 0) { %>
+  <div class="alert alert-success">🎉 全部正确！额外获得 +<%= perfectBonus %> 完美奖励分</div>
+<% } %>
+
+<% results.forEach((r, idx) => {
+  const item = items.find(i => i.id === r.item_id);
+  const itemName = item ? (item.english || item.chinese) : '未知';
+%>
+  <div style="background:#fff;padding:0.75rem 1rem;border-radius:8px;margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;
+              border-left:4px solid <%= r.is_correct ? '#27ae60' : '#e74c3c' %>;">
+    <span style="font-size:1.5rem;"><%= r.is_correct ? '✅' : '❌' %></span>
+    <div style="flex:1;">
+      <strong><%= itemName %></strong>
+      <% if (!r.is_correct) { %>
+        <div style="color:#999;">你的答案：<%= r.user_answer || '(空)' %></div>
+        <div style="color:#27ae60;">正确答案：<%= r.correct_answer %></div>
+      <% } %>
+    </div>
+    <form method="POST" action="/practice/item/<%= r.item_id %>/known" style="margin:0;">
+      <button type="submit" class="btn btn-sm" title="标记为已掌握">✔ 已掌握</button>
+    </form>
+  </div>
+<% }) %>
+
+<div class="mt-2" style="display:flex;gap:1rem;">
+  <a href="/practice/start" class="btn btn-primary">再来一组</a>
+  <a href="/practice" class="btn">返回主页</a>
+</div>

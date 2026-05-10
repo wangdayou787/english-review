@@ -1,0 +1,33 @@
+<h1>学习统计</h1>
+
+<div class="stats-cards" style="display:flex;gap:1rem;margin-bottom:1.5rem;">
+  <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+    <div style="font-size:2rem;font-weight:bold;color:#4a90d9;"><%= totalScore %></div>
+    <div>总积分</div>
+  </div>
+  <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+    <div style="font-size:2rem;font-weight:bold;color:#27ae60;"><%= consecutive %></div>
+    <div>连续打卡</div>
+  </div>
+  <div style="background:#fff;padding:1rem;border-radius:8px;text-align:center;flex:1;">
+    <div style="font-size:2rem;font-weight:bold;color:#e67e22;"><%= accuracy %>%</div>
+    <div>总正确率</div>
+  </div>
+</div>
+
+<h2 class="mb-1">已掌握条目（<%= knownItems.length %>）</h2>
+<% if (knownItems.length > 0) { %>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;">
+    <% knownItems.forEach(item => { %>
+      <span style="background:#e8f5e9;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.9rem;">
+        <%= item.english || item.chinese %>
+      </span>
+    <% }) %>
+  </div>
+<% } else { %>
+  <p class="text-muted">暂无已掌握条目</p>
+<% } %>
+
+<p class="mt-2">
+  <a href="/practice">&larr; 返回复习主页</a>
+</p>
