@@ -16,6 +16,14 @@ describe('review template safety', () => {
     expect(exercise).toContain('textContent');
   });
 
+  test('listening buttons do not embed item text in inline JavaScript', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).not.toContain('onclick="speak');
+    expect(exercise).toContain('data-question="<%= ex.question %>"');
+    expect(exercise).toContain('addEventListener');
+  });
+
   test('stats mastered items use a passive chip class', () => {
     const stats = read('views/stats.ejs');
 

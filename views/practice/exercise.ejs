@@ -25,7 +25,7 @@
       <div class="exercise-question"><%= ex.question %></div>
 
       <% if (ex.exercise_type === 'listening') { %>
-        <button type="button" class="btn btn-sm mb-1" onclick="speak('<%= ex.question.replace(/'/g, "\\'") %>')">🔊 播放发音</button>
+        <button type="button" class="btn btn-sm mb-1 js-speak" data-question="<%= ex.question %>">🔊 播放发音</button>
       <% } %>
 
       <!-- Hidden fields -->
@@ -75,6 +75,10 @@ function speak(text) {
     speechSynthesis.speak(utterance);
   }
 }
+
+document.querySelectorAll('.js-speak').forEach(button => {
+  button.addEventListener('click', () => speak(button.dataset.question || ''));
+});
 
 function selectWord(el, idx) {
   const resultDiv = document.getElementById('sentence-result-' + idx);
