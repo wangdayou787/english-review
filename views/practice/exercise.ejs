@@ -10,8 +10,8 @@
   <% } %>
 
   <% exercises.forEach((ex, idx) => { %>
-    <div style="background:#fff;padding:1rem;border-radius:8px;margin-bottom:0.75rem;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+    <article class="exercise-card">
+      <div class="exercise-meta">
         <strong>第 <%= idx + 1 %> 题</strong>
         <span class="text-muted">
           <% if (ex.exercise_type === 'en2cn') { %>📖 英译中
@@ -22,7 +22,7 @@
         </span>
       </div>
 
-      <div class="mb-1" style="font-size:1.2rem;font-weight:600;"><%= ex.question %></div>
+      <div class="exercise-question"><%= ex.question %></div>
 
       <% if (ex.exercise_type === 'listening') { %>
         <button type="button" class="btn btn-sm mb-1" onclick="speak('<%= ex.question.replace(/'/g, "\\'") %>')">🔊 播放发音</button>
@@ -35,35 +35,34 @@
       <% if (ex.options) { %>
         <!-- Multiple choice -->
         <% ex.options.forEach((opt, oi) => { %>
-          <label style="display:block;padding:0.4rem 0.5rem;cursor:pointer;border-radius:4px;margin-bottom:0.2rem;"
-                 onmouseover="this.style.background='#eef5ff'" onmouseout="this.style.background=''">
+          <label class="choice-option">
             <input type="radio" name="answers[<%= idx %>][answer]" value="<%= opt %>" required>
-            <%= String.fromCharCode(65 + oi) %>. <%= opt %>
+            <span><%= String.fromCharCode(65 + oi) %>. <%= opt %></span>
           </label>
         <% }) %>
       <% } else if (ex.words) { %>
         <!-- Sentence ordering -->
-        <div id="sentence-<%= idx %>" class="sentence-order" style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+        <div id="sentence-<%= idx %>" class="sentence-order">
           <% ex.words.forEach(w => { %>
-            <span class="word-chip" onclick="selectWord(this, <%= idx %>)" style="background:#eef5ff;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;user-select:none;"><%= w %></span>
+            <span class="word-chip" onclick="selectWord(this, <%= idx %>)"><%= w %></span>
           <% }) %>
         </div>
-        <div id="sentence-result-<%= idx %>" style="min-height:30px;margin-top:0.5rem;padding:0.3rem;border:1px dashed #ccc;border-radius:4px;"></div>
+        <div id="sentence-result-<%= idx %>" class="sentence-result"></div>
         <input type="hidden" name="answers[<%= idx %>][answer]" id="sentence-input-<%= idx %>">
       <% } else { %>
         <!-- Text input -->
-        <input type="text" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+        <input type="text" class="answer-input" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required>
       <% } %>
-    </div>
+    </article>
   <% }) %>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+  <div class="form-actions">
     <% if (page < totalPages) { %>
       <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn">下一页</a>
     <% } else { %>
       <span></span>
     <% } %>
-    <button type="submit" class="btn btn-primary" style="padding:0.75rem 2rem;font-size:1.1rem;">提交答案</button>
+    <button type="submit" class="primary-action">提交答案</button>
   </div>
 </form>
 
@@ -84,7 +83,7 @@ function selectWord(el, idx) {
   const current = hiddenInput.value ? hiddenInput.value.split(' ') : [];
   current.push(word);
   hiddenInput.value = current.join(' ');
-  resultDiv.innerHTML = current.map(w => '<span style="background:#d4edda;padding:0.2rem 0.4rem;border-radius:3px;margin-right:0.2rem;">' + w + '</span>').join('');
+  resultDiv.innerHTML = current.map(w => '<span>' + w + '</span>').join('');
   el.style.opacity = '0.4';
   el.style.pointerEvents = 'none';
 }
