@@ -160,6 +160,81 @@ describe('engine/generator.js', () => {
     expect(ex.options).toHaveLength(4);
   });
 
+  test('multiple choice exercise does not crash when there is only one item', () => {
+    const smallDb = new Database(':memory:');
+    initDatabase(smallDb);
+    const textbookId = queries.createTextbook(smallDb, 'Small Book');
+    const unitId = queries.createUnit(smallDb, textbookId, 'Unit 1');
+    const itemId = queries.createItem(smallDb, {
+      unitId,
+      type: 'word',
+      english: 'apple',
+      chinese: '苹果',
+    });
+    const item = queries.getItemById(smallDb, itemId);
+
+    const exercise = generator.createExercise(item, 'en2cn', smallDb);
+
+    expect(exercise.options).toEqual(['苹果']);
+    expect(exercise.options).toContain('苹果');
+    smallDb.close();
+  });
+
+  test('multiple choice options are unique when distractor pool is small', () => {
+    const smallDb = new Database(':memory:');
+    initDatabase(smallDb);
+    const textbookId = queries.createTextbook(smallDb, 'Small Book');
+    const unitId = queries.createUnit(smallDb, textbookId, 'Unit 1');
+    const items = [
+      { unitId, type: 'word', english: 'apple', chinese: '苹果' },
+      { unitId, type: 'word', english: 'book', chinese: '书' },
+      { unitId, type: 'phrase', english: 'good morning', chinese: '早上好' },
+    ];
+    for (const item of items) queries.createItem(smallDb, item);
+    const target = smallDb.prepare("SELECT * FROM items WHERE english = 'apple'").get();
+
+    const exercise = generator.createExercise(target, 'listening', smallDb);
+
+    expect(new Set(exercise.options).size).toBe(exercise.options.length);
+    expect(exercise.options).toContain('苹果');
+    expect(exercise.options.length).toBeLessThanOrEqual(4);
+    smallDb.close();
+  });
+
+  test('multiple choice falls back past unusable same-type distractors', () => {
+    const smallDb = new Database(':memory:');
+    initDatabase(smallDb);
+    const textbookId = queries.createTextbook(smallDb, 'Fallback Book');
+    const unitId = queries.createUnit(smallDb, textbookId, 'Unit 1');
+    const targetId = queries.createItem(smallDb, {
+      unitId,
+      type: 'word',
+      english: 'apple',
+      chinese: '苹果',
+    });
+
+    for (let i = 0; i < 20; i++) {
+      queries.createItem(smallDb, {
+        unitId,
+        type: 'word',
+        english: `duplicate-${i}`,
+        chinese: '苹果',
+      });
+    }
+
+    for (const [english, chinese] of [['phrase-a', '短语A'], ['phrase-b', '短语B'], ['phrase-c', '短语C']]) {
+      queries.createItem(smallDb, { unitId, type: 'phrase', english, chinese });
+    }
+
+    const item = queries.getItemById(smallDb, targetId);
+    const exercise = generator.createExercise(item, 'en2cn', smallDb);
+
+    expect(new Set(exercise.options).size).toBe(4);
+    expect(exercise.options).toContain('苹果');
+    expect(exercise.options).toEqual(expect.arrayContaining(['短语A', '短语B', '短语C']));
+    smallDb.close();
+  });
+
   test('sentence exercise splits example into words for ordering', () => {
     const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'grammar');
     const ex = generator.createExercise(item, 'sentence', db);
