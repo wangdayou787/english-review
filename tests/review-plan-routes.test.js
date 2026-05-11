@@ -101,6 +101,16 @@ describe('admin review plan routes', () => {
     app.cleanup();
   });
 
+  test('admin pages expose a student practice preview link', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/review-plan');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('href="/practice"');
+    expect(res.text).toContain('学生端预览');
+    app.cleanup();
+  });
+
   test('non-admin cannot open review plan page', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     const res = await requestApp(app, 'GET', '/admin/review-plan');
