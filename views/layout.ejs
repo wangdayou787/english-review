@@ -15,7 +15,9 @@
     <div class="nav-links">
       <% if (user) { %>
         <% if (user.role === 'admin') { %>
-          <a href="/admin">管理后台</a>
+          <a href="/admin/textbooks">课本管理</a>
+          <a href="/admin/review-plan">复习计划</a>
+          <a href="/admin/settings">系统设置</a>
         <% } else { %>
           <a href="/practice">开始复习</a>
           <a href="/stats">学习统计</a>

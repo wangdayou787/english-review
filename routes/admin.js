@@ -17,6 +17,60 @@ router.use(requireAdmin);
 // ── Textbooks ────────────────────────────────────────────────────
 router.get('/admin', (req, res) => res.redirect('/admin/textbooks'));
 
+// ── Review Plan ──────────────────────────────────────────────────
+router.get('/admin/review-plan', (req, res) => {
+  const db = req.app.locals.db;
+  const textbooks = queries.getTextbooks(db).map(textbook => ({
+    ...textbook,
+    units: queries.getUnitsByTextbook(db, textbook.id),
+  }));
+  const activePlan = queries.getActiveReviewPlan(db);
+  const config = queries.getConfig(db);
+  const counts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
+
+  renderWithLayout(res, 'admin/review-plan', {
+    textbooks,
+    activePlan,
+    config,
+    counts,
+    error: null,
+    success: null,
+  }, '复习计划');
+});
+
+router.post('/admin/review-plan', (req, res) => {
+  const db = req.app.locals.db;
+  const rawUnitIds = req.body.unit_ids;
+  const unitIds = Array.isArray(rawUnitIds) ? rawUnitIds : rawUnitIds ? [rawUnitIds] : [];
+
+  if (unitIds.length === 0) {
+    const textbooks = queries.getTextbooks(db).map(textbook => ({
+      ...textbook,
+      units: queries.getUnitsByTextbook(db, textbook.id),
+    }));
+    const activePlan = queries.getActiveReviewPlan(db);
+    const config = queries.getConfig(db);
+    const counts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
+
+    return renderWithLayout(res, 'admin/review-plan', {
+      textbooks,
+      activePlan,
+      config,
+      counts,
+      error: '请至少选择一个单元',
+      success: null,
+    }, '复习计划');
+  }
+
+  queries.activateReviewPlan(db, {
+    name: req.body.name || '复习计划',
+    unitIds,
+  });
+  res.redirect('/admin/review-plan');
+});
+
+// ── Textbooks ────────────────────────────────────────────────────
+
 router.get('/admin/textbooks', (req, res) => {
   const textbooks = queries.getTextbooks(req.app.locals.db);
   renderWithLayout(res, 'admin/textbooks', { textbooks, error: null }, '课本管理');

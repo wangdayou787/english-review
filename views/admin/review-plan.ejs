@@ -1,0 +1,65 @@
+<h1>复习计划</h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+<% if (typeof success !== 'undefined' && success) { %>
+  <div class="alert alert-success"><%= success %></div>
+<% } %>
+
+<section class="panel mb-2">
+  <h2 class="mb-1">当前启用计划</h2>
+  <% if (activePlan) { %>
+    <p><strong><%= activePlan.name %></strong></p>
+    <p class="text-muted">
+      <% activePlan.units.forEach((unit, index) => { %>
+        <%= index > 0 ? '、' : '' %><%= unit.textbook_name %> <%= unit.name %>
+      <% }) %>
+    </p>
+    <div class="metric-grid">
+      <section class="metric-card"><strong><%= counts.word || 0 %></strong><span>单词</span></section>
+      <section class="metric-card"><strong><%= counts.phrase || 0 %></strong><span>短语</span></section>
+      <section class="metric-card"><strong><%= counts.grammar || 0 %></strong><span>语法点</span></section>
+    </div>
+  <% } else { %>
+    <p class="text-muted">暂无启用的复习计划。</p>
+  <% } %>
+</section>
+
+<section class="panel mb-2">
+  <h2 class="mb-1">启用此复习计划</h2>
+  <p class="text-muted">每日配额：<%= config.daily_words || 20 %> 个单词，<%= config.daily_phrases || 5 %> 个短语，<%= config.daily_grammar || 3 %> 个语法点。</p>
+
+  <form method="POST" action="/admin/review-plan">
+    <div class="form-group">
+      <label>计划名称</label>
+      <input type="text" name="name" value="<%= activePlan ? activePlan.name : '当前复习计划' %>" required>
+    </div>
+
+    <div class="unit-picker">
+      <% textbooks.forEach(textbook => { %>
+        <section class="unit-picker-group">
+          <h3><%= textbook.name %></h3>
+          <% if (textbook.units.length === 0) { %>
+            <p class="text-muted">暂无单元</p>
+          <% } %>
+          <% textbook.units.forEach(unit => { %>
+            <label class="check-row">
+              <input
+                type="checkbox"
+                name="unit_ids"
+                value="<%= unit.id %>"
+                <%= activePlan && activePlan.units.some(activeUnit => activeUnit.id === unit.id) ? 'checked' : '' %>
+              >
+              <span><%= unit.name %></span>
+            </label>
+          <% }) %>
+        </section>
+      <% }) %>
+    </div>
+
+    <button type="submit" class="btn btn-primary">启用此复习计划</button>
+  </form>
+</section>
+
+<p><a href="/admin/textbooks">&larr; 返回课本管理</a></p>

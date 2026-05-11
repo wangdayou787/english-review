@@ -17,6 +17,7 @@ const filesWithUserFacingText = [
   'views/admin/units.ejs',
   'views/admin/items.ejs',
   'views/admin/item-edit.ejs',
+  'views/admin/review-plan.ejs',
   'views/admin/settings.ejs',
   'views/practice/dashboard.ejs',
   'views/practice/exercise.ejs',
@@ -41,7 +42,7 @@ const corruptedFragments = [
 ];
 
 const expectedText = {
-  'views/layout.ejs': ['英语复习工具', '管理后台', '开始复习', '学习统计', '退出'],
+  'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '系统设置', '开始复习', '学习统计', '退出'],
   'views/login.ejs': ['登录', '用户名', '密码', '还没有账号？', '立即注册'],
   'views/register.ejs': ['注册', '用户名', '密码', '已有账号？', '立即登录'],
   'views/practice/dashboard.ejs': ['复习主页', '今日进度', '开始今日复习', '周期复习提醒'],
@@ -52,6 +53,7 @@ const expectedText = {
   'views/admin/units.ejs': ['返回课本列表', '添加单元'],
   'views/admin/items.ejs': ['添加条目', '批量导入', '英文', '中文释义'],
   'views/admin/item-edit.ejs': ['编辑条目', '保存', '取消'],
+  'views/admin/review-plan.ejs': ['复习计划', '当前启用计划', '启用此复习计划', '每日配额'],
   'views/admin/settings.ejs': ['系统设置', '每日复习配额', '复习周期规则'],
 };
 
