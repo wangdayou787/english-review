@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const queries = require('../db/queries');
 const { requireAdmin } = require('../middleware/auth');
+const { normalizeExampleText } = require('../lib/item-examples');
 
 // Reuse renderWithLayout helper
 function renderWithLayout(res, view, data, title) {
@@ -80,12 +81,19 @@ router.post('/admin/units/:id/items', (req, res) => {
   if (!unit) return res.redirect('/admin/textbooks');
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
 
-  const { type, english, chinese, pos, example } = req.body;
+  const { type, english, chinese, pos, example, examples } = req.body;
   if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
     const items = queries.getItemsByUnit(db, req.params.id);
     return renderWithLayout(res, 'admin/items', { textbook, unit, items, error: '英文和中文不能为空' }, unit.name);
   }
-  queries.createItem(db, { unitId: parseInt(req.params.id), type, english, chinese, pos, example });
+  queries.createItem(db, {
+    unitId: parseInt(req.params.id),
+    type,
+    english,
+    chinese,
+    pos,
+    example: normalizeExampleText(type, example, examples),
+  });
   res.redirect(`/admin/units/${req.params.id}/items`);
 });
 
@@ -119,8 +127,14 @@ router.post('/admin/items/:id/edit', (req, res) => {
   const db = req.app.locals.db;
   const item = queries.getItemById(db, req.params.id);
   if (!item) return res.redirect('/admin/textbooks');
-  const { type, english, chinese, pos, example } = req.body;
-  queries.updateItem(db, req.params.id, { type, english, chinese, pos, example });
+  const { type, english, chinese, pos, example, examples } = req.body;
+  queries.updateItem(db, req.params.id, {
+    type,
+    english,
+    chinese,
+    pos,
+    example: normalizeExampleText(type, example, examples),
+  });
   res.redirect(`/admin/units/${item.unit_id}/items`);
 });
 

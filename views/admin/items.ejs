@@ -17,7 +17,7 @@
   <h3 class="mb-1">添加条目</h3>
   <div class="form-group">
     <label>类型</label>
-    <select name="type" required>
+    <select id="item-type" name="type" required>
       <option value="word">单词 (word)</option>
       <option value="phrase">短语 (phrase)</option>
       <option value="grammar">语法 (grammar)</option>
@@ -26,9 +26,47 @@
   <div class="form-group"><input type="text" name="english" placeholder="英文"></div>
   <div class="form-group"><input type="text" name="chinese" placeholder="中文释义"></div>
   <div class="form-group"><input type="text" name="pos" placeholder="词性（可选）"></div>
-  <div class="form-group"><input type="text" name="example" placeholder="例句（可选）"></div>
+  <div class="form-group">
+    <label for="example">例句（可选）</label>
+    <input type="text" id="example" name="example" placeholder="例句（可选）">
+    <div id="extra-examples" class="mt-2"></div>
+    <button type="button" id="add-example-btn" class="btn btn-sm mt-2" hidden>增加例句</button>
+  </div>
   <button type="submit" class="btn btn-primary">添加</button>
 </form>
+
+<script>
+(() => {
+  const typeSelect = document.getElementById('item-type');
+  const addButton = document.getElementById('add-example-btn');
+  const extraExamples = document.getElementById('extra-examples');
+
+  function updateExampleControls() {
+    const isPhrase = typeSelect.value === 'phrase';
+    addButton.hidden = !isPhrase;
+    if (!isPhrase) {
+      extraExamples.replaceChildren();
+    }
+  }
+
+  addButton.addEventListener('click', () => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-group';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'examples[]';
+    input.placeholder = '增加一个短语例句';
+
+    wrapper.appendChild(input);
+    extraExamples.appendChild(wrapper);
+    input.focus();
+  });
+
+  typeSelect.addEventListener('change', updateExampleControls);
+  updateExampleControls();
+})();
+</script>
 
 <!-- Batch import -->
 <details class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
