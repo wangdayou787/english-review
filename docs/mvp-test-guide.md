@@ -66,3 +66,14 @@ http://localhost:3000
 3. Test admin login, content entry, student registration, review, answer submission, result feedback, and statistics.
 
 If the page cannot open, confirm the app is listening on port `3000` and no other process is using that port.
+
+## 复习计划功能验证
+
+1. 使用管理员账号登录。
+2. 进入"课本管理"，创建课本、Unit，并添加单词、短语和语法点。
+3. 进入"复习计划"，勾选一个或多个 Unit，点击"启用此复习计划"。
+4. 使用学生账号登录。
+5. 进入"开始复习"，确认页面显示"今日复习"、当前范围、新内容数量和复习内容数量。
+6. 点击"开始今日复习"，完成题目。
+7. 当天再次点击"开始今日复习"，确认题目数量不会重复增加。
+8. 修改系统设置中的每日配额，再用新日期或新学生验证任务数量随配额变化。

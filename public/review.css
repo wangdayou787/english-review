@@ -270,3 +270,35 @@
     width: 100%;
   }
 }
+
+.unit-picker {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0;
+}
+
+.unit-picker-group {
+  border: 1px solid #d8e2dc;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fbfdfc;
+}
+
+.unit-picker-group h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.check-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  line-height: 1.5;
+  margin: 0.4rem 0;
+}
+
+.check-row input {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
