@@ -297,6 +297,133 @@ function getAllItemsByType(db, type) {
   return db.prepare('SELECT * FROM items WHERE type = ? ORDER BY id').all(type);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Review Plans
+// ═══════════════════════════════════════════════════════════════
+
+function getActiveReviewPlan(db) {
+  const plan = db.prepare('SELECT * FROM review_plans WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
+  if (!plan) return null;
+
+  const units = db.prepare(
+    `SELECT units.*, textbooks.name AS textbook_name
+     FROM review_plan_units
+     JOIN units ON units.id = review_plan_units.unit_id
+     JOIN textbooks ON textbooks.id = units.textbook_id
+     WHERE review_plan_units.plan_id = ?
+     ORDER BY textbooks.sort_order, textbooks.id, units.sort_order, units.id`
+  ).all(plan.id);
+
+  return { ...plan, units };
+}
+
+function activateReviewPlan(db, { name, unitIds }) {
+  const cleanUnitIds = [...new Set((unitIds || []).map(id => parseInt(id, 10)).filter(Number.isFinite))];
+  if (cleanUnitIds.length === 0) {
+    throw new Error('At least one unit is required');
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE review_plans SET is_active = 0, updated_at = datetime('now') WHERE is_active = 1").run();
+    const result = db.prepare(
+      'INSERT INTO review_plans (name, is_active) VALUES (?, 1)'
+    ).run(name && name.trim() ? name.trim() : '复习计划');
+
+    const insertUnit = db.prepare('INSERT INTO review_plan_units (plan_id, unit_id) VALUES (?, ?)');
+    for (const unitId of cleanUnitIds) {
+      insertUnit.run(result.lastInsertRowid, unitId);
+    }
+
+    return result.lastInsertRowid;
+  });
+
+  return tx();
+}
+
+function getItemsForPlan(db, planId) {
+  return db.prepare(
+    `SELECT items.*
+     FROM review_plan_units
+     JOIN items ON items.unit_id = review_plan_units.unit_id
+     WHERE review_plan_units.plan_id = ?
+     ORDER BY items.type, items.sort_order, items.id`
+  ).all(planId);
+}
+
+function getPlanItemCounts(db, planId) {
+  const rows = db.prepare(
+    `SELECT items.type, COUNT(*) AS count
+     FROM review_plan_units
+     JOIN items ON items.unit_id = review_plan_units.unit_id
+     WHERE review_plan_units.plan_id = ?
+     GROUP BY items.type`
+  ).all(planId);
+
+  return rows.reduce((counts, row) => {
+    counts[row.type] = row.count;
+    return counts;
+  }, { word: 0, phrase: 0, grammar: 0 });
+}
+
+function getDailyReviewTasks(db, userId, planId, taskDate) {
+  return db.prepare(
+    `SELECT items.*, daily_review_tasks.source_type, daily_review_tasks.task_date
+     FROM daily_review_tasks
+     JOIN items ON items.id = daily_review_tasks.item_id
+     WHERE daily_review_tasks.user_id = ?
+       AND daily_review_tasks.plan_id = ?
+       AND daily_review_tasks.task_date = ?
+     ORDER BY daily_review_tasks.id`
+  ).all(userId, planId, taskDate);
+}
+
+function saveDailyReviewTasks(db, { userId, planId, taskDate, tasks }) {
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO daily_review_tasks (user_id, plan_id, task_date, item_id, source_type)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+
+  const tx = db.transaction(() => {
+    for (const task of tasks) {
+      insert.run(userId, planId, taskDate, task.item_id, task.source_type);
+    }
+  });
+
+  tx();
+}
+
+function getReviewTaskDates(db, userId, planId) {
+  return db.prepare(
+    `SELECT DISTINCT task_date
+     FROM daily_review_tasks
+     WHERE user_id = ? AND plan_id = ?
+     ORDER BY task_date`
+  ).all(userId, planId).map(row => row.task_date);
+}
+
+function getRecentReviewTaskItems(db, userId, planId, limitDays) {
+  const dates = db.prepare(
+    `SELECT DISTINCT task_date
+     FROM daily_review_tasks
+     WHERE user_id = ? AND plan_id = ?
+     ORDER BY task_date DESC
+     LIMIT ?`
+  ).all(userId, planId, limitDays).map(row => row.task_date);
+
+  if (dates.length === 0) return [];
+
+  const placeholders = dates.map(() => '?').join(',');
+  return db.prepare(
+    `SELECT items.*, daily_review_tasks.source_type, daily_review_tasks.task_date
+     FROM daily_review_tasks
+     JOIN items ON items.id = daily_review_tasks.item_id
+     WHERE daily_review_tasks.user_id = ?
+       AND daily_review_tasks.plan_id = ?
+       AND daily_review_tasks.task_date IN (${placeholders})
+     ORDER BY daily_review_tasks.task_date DESC, daily_review_tasks.id`
+  ).all(userId, planId, ...dates);
+}
+
 module.exports = {
   getTextbooks,
   createTextbook,
@@ -331,4 +458,12 @@ module.exports = {
   setItemKnown,
   getKnownItemIds,
   getAllItemsByType,
+  getActiveReviewPlan,
+  activateReviewPlan,
+  getItemsForPlan,
+  getPlanItemCounts,
+  getDailyReviewTasks,
+  saveDailyReviewTasks,
+  getReviewTaskDates,
+  getRecentReviewTaskItems,
 };

@@ -127,4 +127,33 @@ describe('db/init.js — database initialization', () => {
     ).get();
     expect(tableInfo.sql).toMatch(/UNIQUE\s*\(\s*user_id\s*,\s*check_date\s*\)/);
   });
+
+  test('initDatabase creates review plan tables', () => {
+    const tables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).all().map(r => r.name);
+
+    expect(tables).toContain('review_plans');
+    expect(tables).toContain('review_plan_units');
+    expect(tables).toContain('daily_review_tasks');
+  });
+
+  test('daily_review_tasks prevents duplicate item assignment for the same student and date', () => {
+    const textbookId = db.prepare('INSERT INTO textbooks (name) VALUES (?)').run('Schema Book').lastInsertRowid;
+    const unitId = db.prepare('INSERT INTO units (textbook_id, name) VALUES (?, ?)').run(textbookId, 'Unit 1').lastInsertRowid;
+    const itemId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'word', 'apple', '苹果')"
+    ).run(unitId).lastInsertRowid;
+    const planId = db.prepare("INSERT INTO review_plans (name, is_active) VALUES ('Plan', 1)").run().lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO daily_review_tasks (user_id, plan_id, task_date, item_id, source_type) VALUES (1, ?, '2026-05-11', ?, 'new')"
+    ).run(planId, itemId);
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO daily_review_tasks (user_id, plan_id, task_date, item_id, source_type) VALUES (1, ?, '2026-05-11', ?, 'new')"
+      ).run(planId, itemId);
+    }).toThrow();
+  });
 });

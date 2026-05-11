@@ -87,6 +87,39 @@ function initDatabase(db) {
       enabled      INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1))
     );
 
+    CREATE TABLE IF NOT EXISTS review_plans (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL,
+      is_active  INTEGER NOT NULL DEFAULT 0 CHECK(is_active IN (0, 1)),
+      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_plans_one_active
+      ON review_plans(is_active)
+      WHERE is_active = 1;
+
+    CREATE TABLE IF NOT EXISTS review_plan_units (
+      plan_id INTEGER NOT NULL REFERENCES review_plans(id) ON DELETE CASCADE,
+      unit_id INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+      PRIMARY KEY (plan_id, unit_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_review_plan_units_unit ON review_plan_units(unit_id);
+
+    CREATE TABLE IF NOT EXISTS daily_review_tasks (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id),
+      plan_id     INTEGER NOT NULL REFERENCES review_plans(id),
+      task_date   TEXT    NOT NULL,
+      item_id     INTEGER NOT NULL REFERENCES items(id),
+      source_type TEXT    NOT NULL CHECK(source_type IN ('new', 'recent_review', 'cycle_review', 'wrong')),
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, task_date, item_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_plan_date
+      ON daily_review_tasks(user_id, plan_id, task_date);
+    CREATE INDEX IF NOT EXISTS idx_daily_tasks_plan_item
+      ON daily_review_tasks(plan_id, item_id);
+
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
