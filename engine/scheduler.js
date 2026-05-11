@@ -122,4 +122,148 @@ function getActiveCycles(db) {
   });
 }
 
-module.exports = { getDailyItems, getCycleItems, getActiveCycles };
+function groupTasksByType(tasks) {
+  return {
+    words: tasks.filter(item => item.type === 'word'),
+    phrases: tasks.filter(item => item.type === 'phrase'),
+    grammar: tasks.filter(item => item.type === 'grammar'),
+  };
+}
+
+function getReviewDayNumber(db, userId, planId) {
+  const dates = queries.getReviewTaskDates(db, userId, planId);
+  return (dates.length % 7) + 1;
+}
+
+function splitQuota(quota) {
+  const parsed = parseInt(quota, 10) || 0;
+  if (parsed <= 0) return { newTarget: 0, reviewTarget: 0 };
+  if (parsed === 1) return { newTarget: 1, reviewTarget: 0 };
+  const newTarget = Math.max(1, Math.floor(parsed * 0.3));
+  return { newTarget, reviewTarget: parsed - newTarget };
+}
+
+function uniqueById(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function getWrongItemIds(db, userId, itemIds) {
+  const records = queries.getReviewRecordsForUser(db, userId, itemIds);
+  const latest = new Map();
+  for (const record of records) {
+    if (!latest.has(record.item_id) || record.created_at > latest.get(record.item_id).created_at) {
+      latest.set(record.item_id, record);
+    }
+  }
+  return new Set(
+    [...latest.values()]
+      .filter(record => record.is_correct === 0)
+      .map(record => record.item_id)
+  );
+}
+
+function selectPlanItemsForType({ candidates, recentItems, wrongIds, knownIds, quota, dayNumber }) {
+  const available = candidates.filter(item => !knownIds.has(item.id));
+  if (quota <= 0 || available.length === 0) return [];
+
+  const recentIds = new Set(recentItems.map(item => item.id));
+  const newItems = available.filter(item => !recentIds.has(item.id));
+  const wrongItems = available.filter(item => wrongIds.has(item.id));
+  const reviewItems = uniqueById([
+    ...wrongItems,
+    ...recentItems.filter(item => item.type === available[0].type && !knownIds.has(item.id)),
+  ]).filter(item => available.some(candidate => candidate.id === item.id));
+
+  if (dayNumber === 1) {
+    return newItems.slice(0, quota).map(item => ({ ...item, source_type: 'new' }));
+  }
+
+  if (dayNumber === 6 || dayNumber === 7) {
+    return reviewItems.slice(0, quota).map(item => ({ ...item, source_type: 'cycle_review' }));
+  }
+
+  const { newTarget, reviewTarget } = splitQuota(quota);
+  const selectedReview = reviewItems.slice(0, reviewTarget).map(item => ({
+    ...item,
+    source_type: wrongIds.has(item.id) ? 'wrong' : 'recent_review',
+  }));
+  const selectedIds = new Set(selectedReview.map(item => item.id));
+  const selectedNew = newItems
+    .filter(item => !selectedIds.has(item.id))
+    .slice(0, newTarget)
+    .map(item => ({ ...item, source_type: 'new' }));
+
+  const fallback = uniqueById([
+    ...reviewItems,
+    ...newItems,
+  ])
+    .filter(item => !selectedIds.has(item.id) && !selectedNew.some(selected => selected.id === item.id))
+    .slice(0, quota - selectedReview.length - selectedNew.length)
+    .map(item => ({
+      ...item,
+      source_type: recentIds.has(item.id) ? (wrongIds.has(item.id) ? 'wrong' : 'recent_review') : 'new',
+    }));
+
+  return [...selectedNew, ...selectedReview, ...fallback].slice(0, quota);
+}
+
+function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
+  const existing = queries.getDailyReviewTasks(db, userId, planId, taskDate);
+  if (existing.length > 0) {
+    return groupTasksByType(existing);
+  }
+
+  const dayNumber = getReviewDayNumber(db, userId, planId);
+  const planItems = queries.getItemsForPlan(db, planId);
+  const knownIds = new Set(queries.getKnownItemIds(db, userId));
+  const recentItems = queries.getRecentReviewTaskItems(db, userId, planId, dayNumber >= 6 ? 5 : 1);
+  const wrongIds = getWrongItemIds(db, userId, planItems.map(item => item.id));
+
+  const byType = {
+    words: planItems.filter(item => item.type === 'word'),
+    phrases: planItems.filter(item => item.type === 'phrase'),
+    grammar: planItems.filter(item => item.type === 'grammar'),
+  };
+
+  const selected = {
+    words: selectPlanItemsForType({
+      candidates: byType.words,
+      recentItems,
+      wrongIds,
+      knownIds,
+      quota: parseInt(quotas.daily_words, 10) || 0,
+      dayNumber,
+    }),
+    phrases: selectPlanItemsForType({
+      candidates: byType.phrases,
+      recentItems,
+      wrongIds,
+      knownIds,
+      quota: parseInt(quotas.daily_phrases, 10) || 0,
+      dayNumber,
+    }),
+    grammar: selectPlanItemsForType({
+      candidates: byType.grammar,
+      recentItems,
+      wrongIds,
+      knownIds,
+      quota: parseInt(quotas.daily_grammar, 10) || 0,
+      dayNumber,
+    }),
+  };
+
+  const flatTasks = [...selected.words, ...selected.phrases, ...selected.grammar].map(item => ({
+    item_id: item.id,
+    source_type: item.source_type,
+  }));
+
+  queries.saveDailyReviewTasks(db, { userId, planId, taskDate, tasks: flatTasks });
+  return groupTasksByType(queries.getDailyReviewTasks(db, userId, planId, taskDate));
+}
+
+module.exports = { getDailyItems, getCycleItems, getActiveCycles, getOrCreateDailyReviewTasks };
