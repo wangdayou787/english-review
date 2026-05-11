@@ -27,6 +27,19 @@ router.get('/practice', (req, res) => {
 
   const hasItems = db.prepare('SELECT COUNT(*) as c FROM items').get().c > 0;
 
+  const activePlan = queries.getActiveReviewPlan(db);
+  const planCounts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
+  const todayTasks = activePlan
+    ? queries.getDailyReviewTasks(db, userId, activePlan.id, today)
+    : [];
+  const taskSummary = {
+    words: todayTasks.filter(item => item.type === 'word').length,
+    phrases: todayTasks.filter(item => item.type === 'phrase').length,
+    grammar: todayTasks.filter(item => item.type === 'grammar').length,
+    newContent: todayTasks.filter(item => item.source_type === 'new').length,
+    reviewContent: todayTasks.filter(item => item.source_type !== 'new').length,
+  };
+
   renderWithLayout(res, 'practice/dashboard', {
     config,
     checkIn,
@@ -34,6 +47,9 @@ router.get('/practice', (req, res) => {
     totalScore,
     activeCycles,
     hasItems,
+    activePlan,
+    planCounts,
+    taskSummary,
   }, '复习主页');
 });
 
@@ -60,8 +76,14 @@ router.get('/practice/start', (req, res) => {
     items = scheduler.getCycleItems(db, userId, coverDays);
     title = `${cycleType === 'weekly' ? '周' : cycleType === 'biweekly' ? '双周' : '月'}复习`;
   } else {
-    // Daily review
-    const result = scheduler.getDailyItems(db, userId, config);
+    // Daily review via active plan
+    const activePlan = queries.getActiveReviewPlan(db);
+    if (!activePlan) {
+      return res.redirect('/practice');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const result = scheduler.getOrCreateDailyReviewTasks(db, userId, activePlan.id, today, config);
     items = [...result.words, ...result.phrases, ...result.grammar];
     title = '今日复习';
   }
@@ -75,6 +97,9 @@ router.get('/practice/start', (req, res) => {
       activeCycles: scheduler.getActiveCycles(db),
       hasItems: true,
       error: '暂无复习内容',
+      activePlan: queries.getActiveReviewPlan(db),
+      planCounts: { word: 0, phrase: 0, grammar: 0 },
+      taskSummary: { words: 0, phrases: 0, grammar: 0, newContent: 0, reviewContent: 0 },
     }, '复习主页');
   }
 

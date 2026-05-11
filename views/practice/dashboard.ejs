@@ -4,6 +4,30 @@
   <div class="alert alert-error"><%= error %></div>
 <% } %>
 
+<% if (!activePlan) { %>
+  <section class="panel mb-2">
+    <h2>暂无复习计划</h2>
+    <p class="text-muted">请先由管理员在后台启用复习计划。</p>
+  </section>
+<% } else { %>
+  <section class="panel mb-2">
+    <h2 class="mb-1">今日复习</h2>
+    <p class="text-muted">
+      当前范围：
+      <% activePlan.units.forEach((unit, index) => { %>
+        <%= index > 0 ? '、' : '' %><%= unit.textbook_name %> <%= unit.name %>
+      <% }) %>
+    </p>
+    <div class="metric-grid">
+      <section class="metric-card"><strong><%= taskSummary.words %></strong><span>今日单词</span></section>
+      <section class="metric-card"><strong><%= taskSummary.phrases %></strong><span>今日短语</span></section>
+      <section class="metric-card"><strong><%= taskSummary.grammar %></strong><span>今日语法</span></section>
+      <section class="metric-card"><strong><%= taskSummary.newContent %></strong><span>新内容</span></section>
+      <section class="metric-card"><strong><%= taskSummary.reviewContent %></strong><span>复习内容</span></section>
+    </div>
+  </section>
+<% } %>
+
 <% if (!hasItems) { %>
   <div class="alert alert-error">暂无复习内容，请联系管理员添加单词和短语。</div>
 <% } else { %>
@@ -21,7 +45,7 @@
   <h2 class="mb-1">今日进度</h2>
   <section class="panel progress-list mb-2">
     <div class="progress-row">
-      <strong>单词：</strong><%= checkIn.words_done || 0 %> / <%= config.daily_words %> 
+      <strong>单词：</strong><%= checkIn.words_done || 0 %> / <%= config.daily_words %>
       <progress value="<%= checkIn.words_done || 0 %>" max="<%= config.daily_words %>"></progress>
     </div>
     <div class="progress-row">
@@ -34,14 +58,16 @@
     </div>
   </section>
 
-  <a href="/practice/start" class="primary-action mb-2">开始今日复习</a>
+  <% if (activePlan) { %>
+    <a href="/practice/start" class="primary-action mb-2">开始今日复习</a>
+  <% } %>
 
   <% if (activeCycles.length > 0) { %>
     <h2 class="mb-1 mt-2">周期复习提醒</h2>
     <div class="reminder-list">
       <% activeCycles.forEach(c => { %>
         <div class="reminder-row">
-          <span>📅 <%= c.cycle_type === 'weekly' ? '本周' : c.cycle_type === 'biweekly' ? '双周' : '本月' %>复习日 — 建议完成周期全覆盖复习</span>
+          <span><%= c.cycle_type === 'weekly' ? '本周' : c.cycle_type === 'biweekly' ? '双周' : '本月' %>复习日 — 建议完成周期全覆盖复习</span>
           <a href="/practice/start?cycle=<%= c.cycle_type %>" class="btn btn-sm btn-primary">开始复习</a>
         </div>
       <% }) %>
@@ -49,4 +75,4 @@
   <% } %>
 <% } %>
 
-<p class="mt-2"><a href="/stats">📊 查看学习统计</a></p>
+<p class="mt-2"><a href="/stats">查看学习统计</a></p>

@@ -45,7 +45,7 @@ const expectedText = {
   'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '系统设置', '开始复习', '学习统计', '退出'],
   'views/login.ejs': ['登录', '用户名', '密码', '还没有账号？', '立即注册'],
   'views/register.ejs': ['注册', '用户名', '密码', '已有账号？', '立即登录'],
-  'views/practice/dashboard.ejs': ['复习主页', '今日进度', '开始今日复习', '周期复习提醒'],
+  'views/practice/dashboard.ejs': ['复习主页', '今日进度', '今日复习', '新内容', '复习内容', '开始今日复习', '暂无复习计划', '周期复习提醒'],
   'views/practice/exercise.ejs': ['提交答案', '播放发音', '输入你的答案'],
   'views/practice/result.ejs': ['练习结果', '获得积分', '正确率', '已掌握'],
   'views/stats.ejs': ['学习统计', '总积分', '连续打卡', '总正确率'],
