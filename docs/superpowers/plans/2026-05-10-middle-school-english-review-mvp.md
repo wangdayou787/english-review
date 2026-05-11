@@ -763,30 +763,23 @@ Change this before any real deployment.
 6. Confirm the result page shows score, correct answer feedback, and the mastered action.
 7. Open learning statistics and confirm the score and accuracy are visible.
 
-## Android Phone LAN Test
+## Desktop Browser Test
 
-1. Keep the computer and Android phone on the same Wi-Fi network.
-2. Find the computer IPv4 address with:
-
-```powershell
-ipconfig
-```
-
-3. Start the app with:
+1. Start the app on the development computer:
 
 ```powershell
 cmd /c npm start
 ```
 
-4. On the phone browser, open:
+2. Open a desktop browser on the same computer:
 
 ```text
-http://<computer-ip>:3000
+http://localhost:3000
 ```
 
-5. Test login, review, answer submission, result feedback, and statistics.
+3. Test admin login, content entry, student registration, review, answer submission, result feedback, and statistics.
 
-If the phone cannot connect, check Windows firewall and confirm the app is listening on port `3000`.
+If the page cannot open, confirm the app is listening on port `3000` and no other process is using that port.
 ```
 
 - [ ] **Step 2: Run tests after docs-only change**
@@ -874,7 +867,7 @@ Expected: commit succeeds only if documentation changed.
 
 ## Self-Review Notes
 
-- Spec coverage: the plan covers Git/doc hygiene, Chinese text repair, EJS repair, student-friendly visual design, generator edge cases, test coverage, and manual Android verification notes.
-- Scope control: the plan does not add class management, cloud sync, AI generation, payment, public deployment, or mobile packaging.
+- Spec coverage: the plan covers Git/doc hygiene, Chinese text repair, EJS repair, student-friendly visual design, generator edge cases, test coverage, and manual desktop-browser verification notes.
+- Scope control: the plan does not add class management, cloud sync, AI generation, payment, public deployment, or native app packaging.
 - Test strategy: Tasks use failing tests before repairs for UI text and generator edge cases, then run targeted and full suites.
 - Execution style: tasks are small enough for checkpointed execution and frequent commits.

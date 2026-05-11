@@ -49,27 +49,20 @@ Change this before any real deployment.
 6. Confirm the result page shows score, correct answer feedback, and the mastered action.
 7. Open learning statistics and confirm the score and accuracy are visible.
 
-## Android Phone LAN Test
+## Desktop Browser Test
 
-1. Keep the computer and Android phone on the same Wi-Fi network.
-2. Find the computer IPv4 address with:
-
-```powershell
-ipconfig
-```
-
-3. Start the app with:
+1. Start the app on the development computer:
 
 ```powershell
 cmd /c npm start
 ```
 
-4. On the phone browser, open:
+2. Open a desktop browser on the same computer:
 
 ```text
-http://<computer-ip>:3000
+http://localhost:3000
 ```
 
-5. Test login, review, answer submission, result feedback, and statistics.
+3. Test admin login, content entry, student registration, review, answer submission, result feedback, and statistics.
 
-If the phone cannot connect, check Windows firewall and confirm the app is listening on port `3000`.
+If the page cannot open, confirm the app is listening on port `3000` and no other process is using that port.

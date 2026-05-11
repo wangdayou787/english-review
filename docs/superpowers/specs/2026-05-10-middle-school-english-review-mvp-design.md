@@ -57,7 +57,7 @@ Out of scope for the first MVP:
 - AI-generated exercises.
 - Online payment.
 - Complex permissions beyond admin and student roles.
-- Full mobile app packaging.
+- Native app packaging.
 
 ## Architecture
 
@@ -68,7 +68,7 @@ The project will keep the current lightweight architecture:
 - SQLite stores users, content, review records, check-ins, mastery state, config, and review cycles.
 - The existing scheduler and generator modules remain the core review engines.
 
-No frontend build system will be introduced for the MVP. This keeps local testing simple and supports phone testing over the local network.
+No frontend build system will be introduced for the MVP. This keeps local desktop-browser testing simple.
 
 ## Core User Flows
 
@@ -120,7 +120,7 @@ Design requirements:
 - Avoid harsh contrast, dense decoration, and noisy gradients.
 - Use generous spacing for exercise options and inputs.
 - Keep cards shallow and purposeful, with no nested card-heavy layout.
-- Make pages responsive enough for phone testing.
+- Make pages responsive enough for common desktop browser widths.
 - Keep typography readable for middle school students.
 
 Admin pages should be more utilitarian:
@@ -167,7 +167,7 @@ Manual verification should include:
 - Running daily review.
 - Submitting correct and incorrect answers.
 - Checking result and statistics pages.
-- Testing the interface from an Android phone on the local network.
+- Testing the interface in a desktop browser on the development computer.
 
 ## Implementation Priorities
 
@@ -180,7 +180,7 @@ Manual verification should include:
 
 ## Open Assumptions
 
-- The first MVP is for local or LAN testing, not public deployment.
+- The first MVP is for local desktop-browser testing, not public deployment.
 - Default admin credentials are acceptable only for development and must be changed before real deployment.
 - The existing SQLite schema is sufficient for the MVP.
 - Sample learning content can be entered through the admin interface rather than seeded automatically in this phase.
