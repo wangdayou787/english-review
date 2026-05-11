@@ -25,22 +25,39 @@ function pickExerciseType(item) {
 }
 
 /**
- * Get 3 random distractor items of the same type for multiple-choice exercises.
+ * Get up to 3 random distractor items, preferring the same type.
  */
 function getDistractors(item, db) {
-  const all = db.prepare(
-    'SELECT * FROM items WHERE type = ? AND id != ? ORDER BY RANDOM() LIMIT 3'
-  ).all(item.type, item.id);
+  const seen = new Set([item.chinese]);
+  const distractors = [];
 
-  // If not enough distractors of same type, get any
-  if (all.length < 3) {
-    const extra = db.prepare(
-      'SELECT * FROM items WHERE id NOT IN (?, ?) ORDER BY RANDOM() LIMIT ?'
-    ).all(item.id, ...all.map(i => i.id), 3 - all.length);
-    all.push(...extra);
+  function addRows(rows) {
+    for (const row of rows) {
+      if (!row.chinese || seen.has(row.chinese)) continue;
+      seen.add(row.chinese);
+      distractors.push(row);
+      if (distractors.length === 3) break;
+    }
   }
 
-  return all.map(i => i.chinese || i.english || '');
+  const sameTypeRows = db.prepare(
+    'SELECT * FROM items WHERE type = ? AND id != ? ORDER BY RANDOM()'
+  ).all(item.type, item.id);
+  addRows(sameTypeRows);
+
+  if (distractors.length < 3) {
+    const fallbackRows = db.prepare(
+      'SELECT * FROM items WHERE type != ? AND id != ? ORDER BY RANDOM()'
+    ).all(item.type, item.id);
+    addRows(fallbackRows);
+  }
+
+  return distractors;
+}
+
+function buildOptions(distractors, item) {
+  const options = [...new Set([...distractors.map(d => d.chinese), item.chinese].filter(Boolean))];
+  return options.sort(() => Math.random() - 0.5);
 }
 
 /**
@@ -57,7 +74,7 @@ function createExercise(item, exerciseType, db) {
   switch (exerciseType) {
     case 'en2cn': {
       const distractors = getDistractors(item, db);
-      const options = [...distractors, item.chinese].sort(() => Math.random() - 0.5);
+      const options = buildOptions(distractors, item);
       return {
         ...base,
         question: item.english,
@@ -76,7 +93,7 @@ function createExercise(item, exerciseType, db) {
 
     case 'listening': {
       const distractors = getDistractors(item, db);
-      const options = [...distractors, item.chinese].sort(() => Math.random() - 0.5);
+      const options = buildOptions(distractors, item);
       return {
         ...base,
         question: item.english, // Used by TTS
