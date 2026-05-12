@@ -3,6 +3,18 @@ const router = express.Router();
 const queries = require('../db/queries');
 const { requireAdmin } = require('../middleware/auth');
 const { normalizeExampleText } = require('../lib/item-examples');
+const WORD_INFLECTION_FIELDS = [
+  'plural',
+  'third_person_singular',
+  'past_tense',
+  'past_participle',
+  'present_participle',
+  'comparative',
+  'superlative',
+  'adverb',
+  'adjective',
+  'noun',
+];
 
 // Reuse renderWithLayout helper
 function renderWithLayout(res, view, data, title) {
@@ -98,18 +110,10 @@ function normalizeWordQuestionDetails(raw) {
     baseForm: raw?.base_form || '',
     firstLetterHint: raw?.first_letter_hint || '',
     usageNote: raw?.usage_note || '',
-    inflections: {
-      plural: raw?.plural || '',
-      third_person_singular: raw?.third_person_singular || '',
-      past_tense: raw?.past_tense || '',
-      past_participle: raw?.past_participle || '',
-      present_participle: raw?.present_participle || '',
-      comparative: raw?.comparative || '',
-      superlative: raw?.superlative || '',
-      adverb: raw?.adverb || '',
-      adjective: raw?.adjective || '',
-      noun: raw?.noun || '',
-    },
+    inflections: WORD_INFLECTION_FIELDS.reduce((all, key) => {
+      all[key] = raw?.[key] || '';
+      return all;
+    }, {}),
   };
 }
 
@@ -136,6 +140,32 @@ function normalizePhraseChoiceRows(rawRows) {
 function normalizeSentenceTokens(tokensText, answerSentence) {
   const source = String(tokensText || answerSentence || '').trim();
   return source ? source.split(/\s+/) : [];
+}
+
+function mergeWordQuestionDetails(existing, submitted) {
+  const merged = {
+    baseForm: submitted.baseForm || existing?.base_form || '',
+    firstLetterHint: submitted.firstLetterHint || existing?.first_letter_hint || '',
+    usageNote: submitted.usageNote || existing?.usage_note || '',
+    inflections: { ...(existing?.inflections || {}) },
+  };
+
+  for (const key of WORD_INFLECTION_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(submitted.inflections || {}, key)) {
+      const value = submitted.inflections[key];
+      if (value !== undefined && value !== null && value !== '') {
+        merged.inflections[key] = value;
+      }
+    }
+  }
+
+  return merged;
+}
+
+function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
+  return db.prepare(
+    'SELECT * FROM phrase_choice_questions WHERE id = ? AND item_id = ?'
+  ).get(questionId, itemId);
 }
 
 router.post('/admin/question-types', (req, res) => {
@@ -284,12 +314,20 @@ router.post('/admin/items/:id/edit', (req, res) => {
     example: normalizeExampleText(type, example, examples),
   });
   if (type === 'word') {
-    queries.saveWordQuestionDetails(db, req.params.id, normalizeWordQuestionDetails(req.body.word_detail));
+    const existingWordDetail = queries.getWordQuestionDetails(db, req.params.id);
+    const submittedWordDetail = normalizeWordQuestionDetails(req.body.word_detail);
+    queries.saveWordQuestionDetails(
+      db,
+      req.params.id,
+      mergeWordQuestionDetails(existingWordDetail, submittedWordDetail),
+    );
   }
   if (type === 'phrase') {
     for (const row of normalizePhraseChoiceRows(req.body.phrase_choice)) {
       if (row.id) {
-        queries.updatePhraseChoiceQuestion(db, row.id, row);
+        if (getPhraseChoiceQuestionForItem(db, req.params.id, row.id)) {
+          queries.updatePhraseChoiceQuestion(db, row.id, row);
+        }
       } else {
         queries.savePhraseChoiceQuestion(db, { itemId: req.params.id, ...row });
       }
@@ -306,12 +344,13 @@ router.post('/admin/items/:id/edit', (req, res) => {
   res.redirect(`/admin/units/${item.unit_id}/items`);
 });
 
-router.post('/admin/phrase-choice-questions/:id/delete', (req, res) => {
+router.post('/admin/items/:itemId/phrase-choice-questions/:id/delete', (req, res) => {
   const db = req.app.locals.db;
-  const row = db.prepare('SELECT item_id FROM phrase_choice_questions WHERE id = ?').get(req.params.id);
-  if (!row) return res.redirect('/admin/textbooks');
-  queries.deletePhraseChoiceQuestion(db, req.params.id);
-  res.redirect(`/admin/items/${row.item_id}/edit`);
+  const row = getPhraseChoiceQuestionForItem(db, req.params.itemId, req.params.id);
+  if (row) {
+    queries.deletePhraseChoiceQuestion(db, req.params.id);
+  }
+  res.redirect(`/admin/items/${req.params.itemId}/edit`);
 });
 
 router.post('/admin/items/:id/delete', (req, res) => {

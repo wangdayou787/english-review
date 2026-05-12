@@ -54,8 +54,16 @@
     <div class="form-group"><label>原形</label><input type="text" name="word_detail[base_form]" value="<%= wordDetail.base_form || '' %>"></div>
     <div class="form-group"><label>首字母提示</label><input type="text" name="word_detail[first_letter_hint]" value="<%= wordDetail.first_letter_hint || '' %>"></div>
     <div class="form-group"><label>用法说明</label><input type="text" name="word_detail[usage_note]" value="<%= wordDetail.usage_note || '' %>"></div>
+    <div class="form-group"><label>复数</label><input type="text" name="word_detail[plural]" value="<%= wordInflections.plural || '' %>"></div>
+    <div class="form-group"><label>第三人称单数</label><input type="text" name="word_detail[third_person_singular]" value="<%= wordInflections.third_person_singular || '' %>"></div>
     <div class="form-group"><label>过去式</label><input type="text" name="word_detail[past_tense]" value="<%= wordInflections.past_tense || '' %>"></div>
+    <div class="form-group"><label>过去分词</label><input type="text" name="word_detail[past_participle]" value="<%= wordInflections.past_participle || '' %>"></div>
     <div class="form-group"><label>现在分词</label><input type="text" name="word_detail[present_participle]" value="<%= wordInflections.present_participle || '' %>"></div>
+    <div class="form-group"><label>比较级</label><input type="text" name="word_detail[comparative]" value="<%= wordInflections.comparative || '' %>"></div>
+    <div class="form-group"><label>最高级</label><input type="text" name="word_detail[superlative]" value="<%= wordInflections.superlative || '' %>"></div>
+    <div class="form-group"><label>副词形式</label><input type="text" name="word_detail[adverb]" value="<%= wordInflections.adverb || '' %>"></div>
+    <div class="form-group"><label>形容词形式</label><input type="text" name="word_detail[adjective]" value="<%= wordInflections.adjective || '' %>"></div>
+    <div class="form-group"><label>名词形式</label><input type="text" name="word_detail[noun]" value="<%= wordInflections.noun || '' %>"></div>
   <% } %>
 
   <% if (item.type === 'phrase') { %>
@@ -70,7 +78,7 @@
         <div class="form-group"><label>干扰项 C</label><input type="text" name="phrase_choice[<%= index %>][distractor_c]" value="<%= row.distractor_c %>"></div>
         <div class="form-group"><label>解析</label><input type="text" name="phrase_choice[<%= index %>][explanation]" value="<%= row.explanation %>"></div>
         <% if (row.id) { %>
-          <button type="submit" formaction="/admin/phrase-choice-questions/<%= row.id %>/delete" class="btn">删除这道辨析题</button>
+          <button type="submit" formaction="/admin/items/<%= item.id %>/phrase-choice-questions/<%= row.id %>/delete" class="btn">删除这道辨析题</button>
         <% } %>
       </div>
     <% }) %>
