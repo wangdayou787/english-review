@@ -138,6 +138,63 @@ describe('db/init.js — database initialization', () => {
     expect(tables).toContain('daily_review_tasks');
   });
 
+  test('initDatabase creates single-point question support tables', () => {
+    const tables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).all().map(r => r.name);
+
+    expect(tables).toContain('word_question_details');
+    expect(tables).toContain('phrase_choice_questions');
+    expect(tables).toContain('sentence_order_details');
+  });
+
+  test('word_question_details and sentence_order_details enforce one row per item', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Schema Book')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const wordId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'word', 'apple', '苹果')"
+    ).run(unitId).lastInsertRowid;
+    const grammarId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'grammar', 'I am a student', '我是学生')"
+    ).run(unitId).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO word_question_details (item_id, base_form, inflections_json) VALUES (?, 'apple', '{}')"
+    ).run(wordId);
+    db.prepare(
+      "INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json) VALUES (?, 'I am a student', '[\"I\",\"am\",\"a\",\"student\"]')"
+    ).run(grammarId);
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO word_question_details (item_id, base_form, inflections_json) VALUES (?, 'apple', '{}')"
+      ).run(wordId);
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json) VALUES (?, 'I am a student', '[\"I\",\"am\",\"a\",\"student\"]')"
+      ).run(grammarId);
+    }).toThrow();
+  });
+
+  test('single-point supporting rows cascade delete with item removal', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Cascade Book')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const phraseId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'phrase', 'look after', '照顾')"
+    ).run(unitId).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO phrase_choice_questions (item_id, prompt_sentence, correct_phrase, distractor_a, distractor_b, distractor_c, explanation) VALUES (?, 'She often ___ her sister.', 'looks after', 'looks up', 'looks for', 'looks at', '固定搭配')"
+    ).run(phraseId);
+
+    db.prepare('DELETE FROM items WHERE id = ?').run(phraseId);
+
+    const row = db.prepare('SELECT * FROM phrase_choice_questions WHERE item_id = ?').get(phraseId);
+    expect(row).toBeUndefined();
+  });
+
   test('daily_review_tasks prevents duplicate item assignment for the same student and date', () => {
     const textbookId = db.prepare('INSERT INTO textbooks (name) VALUES (?)').run('Schema Book').lastInsertRowid;
     const unitId = db.prepare('INSERT INTO units (textbook_id, name) VALUES (?, ?)').run(textbookId, 'Unit 1').lastInsertRowid;

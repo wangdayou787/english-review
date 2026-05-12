@@ -121,6 +121,33 @@ function initDatabase(db) {
     CREATE INDEX IF NOT EXISTS idx_daily_tasks_plan_item
       ON daily_review_tasks(plan_id, item_id);
 
+    CREATE TABLE IF NOT EXISTS word_question_details (
+      item_id            INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+      base_form          TEXT,
+      first_letter_hint  TEXT,
+      usage_note         TEXT,
+      inflections_json   TEXT    NOT NULL DEFAULT '{}'
+    );
+
+    CREATE TABLE IF NOT EXISTS phrase_choice_questions (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id         INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+      prompt_sentence TEXT    NOT NULL,
+      correct_phrase  TEXT    NOT NULL,
+      distractor_a    TEXT    NOT NULL,
+      distractor_b    TEXT    NOT NULL,
+      distractor_c    TEXT    NOT NULL,
+      explanation     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_phrase_choice_questions_item ON phrase_choice_questions(item_id, id);
+
+    CREATE TABLE IF NOT EXISTS sentence_order_details (
+      item_id          INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+      answer_sentence  TEXT    NOT NULL,
+      tokens_json      TEXT    NOT NULL DEFAULT '[]',
+      hint_text        TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
