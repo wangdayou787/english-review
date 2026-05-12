@@ -83,11 +83,19 @@ describe('question type query helpers', () => {
       inflections: { past_tense: 'studied', present_participle: 'studying' },
     });
 
+    queries.saveWordQuestionDetails(db, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 'st',
+      usageNote: '更新后的说明',
+      inflections: { past_tense: 'studied', present_participle: 'studying', third_person_singular: 'studies' },
+    });
+
     const detail = queries.getWordQuestionDetails(db, itemId);
     expect(detail.base_form).toBe('study');
-    expect(detail.first_letter_hint).toBe('s');
-    expect(detail.usage_note).toBe('动词原形');
+    expect(detail.first_letter_hint).toBe('st');
+    expect(detail.usage_note).toBe('更新后的说明');
     expect(detail.inflections.past_tense).toBe('studied');
+    expect(detail.inflections.third_person_singular).toBe('studies');
   });
 
   test('saveWordQuestionDetails normalizes blank inflection values to empty JSON', () => {
@@ -109,7 +117,7 @@ describe('question type query helpers', () => {
     expect(detail.inflections).toEqual({});
   });
 
-  test('savePhraseChoiceQuestion and deletePhraseChoiceQuestion manage explicit phrase questions', () => {
+  test('savePhraseChoiceQuestion, updatePhraseChoiceQuestion, and deletePhraseChoiceQuestion manage explicit phrase questions', () => {
     const textbookId = queries.createTextbook(db, 'Phrase Book');
     const unitId = queries.createUnit(db, textbookId, 'Unit 1');
     const itemId = queries.createItem(db, { unitId, type: 'phrase', english: 'look after', chinese: '照顾' });
@@ -127,6 +135,21 @@ describe('question type query helpers', () => {
     let rows = queries.getPhraseChoiceQuestionsByItem(db, itemId);
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(questionId);
+    expect(rows[0].correct_phrase).toBe('looks after');
+
+    queries.updatePhraseChoiceQuestion(db, questionId, {
+      promptSentence: 'She always ___ her younger brother on weekends.',
+      correctPhrase: 'looks after',
+      distractorA: 'looks up',
+      distractorB: 'looks over',
+      distractorC: 'looks at',
+      explanation: 'look after 表示照顾；look over 表示检查。',
+    });
+
+    rows = queries.getPhraseChoiceQuestionsByItem(db, itemId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].prompt_sentence).toBe('She always ___ her younger brother on weekends.');
+    expect(rows[0].distractor_b).toBe('looks over');
 
     queries.deletePhraseChoiceQuestion(db, questionId);
     rows = queries.getPhraseChoiceQuestionsByItem(db, itemId);
@@ -144,9 +167,15 @@ describe('question type query helpers', () => {
       hintText: '先找主语。',
     });
 
+    queries.saveSentenceOrderDetails(db, itemId, {
+      answerSentence: 'She likes pop music',
+      tokens: ['She', 'likes', 'pop', 'music'],
+      hintText: '先确定主语，再放动词。',
+    });
+
     const detail = queries.getSentenceOrderDetails(db, itemId);
-    expect(detail.answer_sentence).toBe('She likes music');
-    expect(detail.tokens).toEqual(['She', 'likes', 'music']);
-    expect(detail.hint_text).toBe('先找主语。');
+    expect(detail.answer_sentence).toBe('She likes pop music');
+    expect(detail.tokens).toEqual(['She', 'likes', 'pop', 'music']);
+    expect(detail.hint_text).toBe('先确定主语，再放动词。');
   });
 });

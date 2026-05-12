@@ -495,6 +495,27 @@ function savePhraseChoiceQuestion(db, { itemId, promptSentence, correctPhrase, d
   return result.lastInsertRowid;
 }
 
+function updatePhraseChoiceQuestion(db, id, { promptSentence, correctPhrase, distractorA, distractorB, distractorC, explanation }) {
+  db.prepare(
+    `UPDATE phrase_choice_questions
+     SET prompt_sentence = ?,
+         correct_phrase = ?,
+         distractor_a = ?,
+         distractor_b = ?,
+         distractor_c = ?,
+         explanation = ?
+     WHERE id = ?`
+  ).run(
+    promptSentence,
+    correctPhrase,
+    distractorA,
+    distractorB,
+    distractorC,
+    explanation || null,
+    id,
+  );
+}
+
 function deletePhraseChoiceQuestion(db, id) {
   db.prepare('DELETE FROM phrase_choice_questions WHERE id = ?').run(id);
 }
@@ -662,6 +683,7 @@ module.exports = {
   saveWordQuestionDetails,
   getPhraseChoiceQuestionsByItem,
   savePhraseChoiceQuestion,
+  updatePhraseChoiceQuestion,
   deletePhraseChoiceQuestion,
   getSentenceOrderDetails,
   saveSentenceOrderDetails,
