@@ -554,10 +554,11 @@ function safeParseDisplayOptions(value) {
 }
 
 function normalizeQuestionTypeRow(row) {
+  const supportedItemTypes = parseJsonOrDefault(row.supported_item_types, []);
   return {
     ...row,
     enabled: row.enabled === 1,
-    supported_item_types: parseJsonOrDefault(row.supported_item_types, []),
+    supported_item_types: Array.isArray(supportedItemTypes) ? supportedItemTypes : [],
     display_options: safeParseDisplayOptions(row.display_options),
   };
 }

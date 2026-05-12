@@ -104,6 +104,15 @@ describe('question type query helpers', () => {
     expect(row.supported_item_types).toEqual([]);
   });
 
+  test('getAvailableQuestionTypesForItemType tolerates non-array supported item type JSON', () => {
+    db.prepare('UPDATE question_types SET supported_item_types = ? WHERE code = ?').run('{}', 'vocab_en_cn_choice');
+
+    expect(() => queries.getAvailableQuestionTypesForItemType(db, 'word')).not.toThrow();
+
+    const wordTypes = queries.getAvailableQuestionTypesForItemType(db, 'word');
+    expect(wordTypes.map(type => type.code)).not.toContain('vocab_en_cn_choice');
+  });
+
   test('saveWordQuestionDetails upserts structured word fields', () => {
     const textbookId = queries.createTextbook(db, 'Word Book');
     const unitId = queries.createUnit(db, textbookId, 'Unit 1');
