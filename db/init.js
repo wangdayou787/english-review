@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const { QUESTION_TYPES, serializeDisplayOptions } = require('../data/question-types');
 
 /**
  * Initialize the database: create tables and insert default data.
@@ -124,6 +125,32 @@ function initDatabase(db) {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS question_types (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      code                  TEXT    NOT NULL UNIQUE,
+      category              TEXT    NOT NULL CHECK(category IN ('vocabulary', 'phrase', 'grammar', 'sentence', 'cloze', 'reading')),
+      name                  TEXT    NOT NULL,
+      description           TEXT    NOT NULL DEFAULT '',
+      supported_item_types  TEXT    NOT NULL,
+      implementation_status TEXT    NOT NULL CHECK(implementation_status IN ('available', 'planned')),
+      default_weight        INTEGER NOT NULL DEFAULT 10 CHECK(default_weight >= 0 AND default_weight <= 100),
+      sort_order            INTEGER NOT NULL DEFAULT 0,
+      created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_question_types_category_sort ON question_types(category, sort_order);
+
+    CREATE TABLE IF NOT EXISTS question_type_settings (
+      question_type_code  TEXT    PRIMARY KEY REFERENCES question_types(code) ON DELETE CASCADE,
+      enabled             INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0, 1)),
+      weight              INTEGER NOT NULL DEFAULT 10 CHECK(weight >= 0 AND weight <= 100),
+      instruction_text    TEXT    NOT NULL DEFAULT '',
+      primary_action_text TEXT    NOT NULL DEFAULT '',
+      hint_text           TEXT    NOT NULL DEFAULT '',
+      display_options     TEXT    NOT NULL DEFAULT '{}',
+      updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // ── Insert default data (idempotent via INSERT OR IGNORE) ─────
@@ -156,6 +183,52 @@ function initDatabase(db) {
     insertCycle.run('biweekly', '[6,7]', 14);
     insertCycle.run('monthly', '[28,29,30,31]', 0);
   }
+
+  const insertQuestionType = db.prepare(
+    `INSERT INTO question_types (
+       code, category, name, description, supported_item_types,
+       implementation_status, default_weight, sort_order
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(code) DO UPDATE SET
+       category = excluded.category,
+       name = excluded.name,
+       description = excluded.description,
+       supported_item_types = excluded.supported_item_types,
+       implementation_status = excluded.implementation_status,
+       default_weight = excluded.default_weight,
+       sort_order = excluded.sort_order,
+       updated_at = datetime('now')`
+  );
+
+  const insertQuestionTypeSetting = db.prepare(
+    `INSERT OR IGNORE INTO question_type_settings (
+       question_type_code, enabled, weight, instruction_text,
+       primary_action_text, hint_text, display_options
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  QUESTION_TYPES.forEach((type, index) => {
+    insertQuestionType.run(
+      type.code,
+      type.category,
+      type.name,
+      type.description,
+      JSON.stringify(type.supportedItemTypes),
+      type.implementationStatus,
+      type.defaultWeight,
+      index + 1
+    );
+
+    insertQuestionTypeSetting.run(
+      type.code,
+      type.implementationStatus === 'available' ? 1 : 0,
+      type.defaultWeight,
+      type.instructionText,
+      type.primaryActionText,
+      type.hintText,
+      serializeDisplayOptions(type.displayOptions)
+    );
+  });
 }
 
 module.exports = { initDatabase };

@@ -156,4 +156,42 @@ describe('db/init.js — database initialization', () => {
       ).run(planId, itemId);
     }).toThrow();
   });
+
+  test('initDatabase creates question type infrastructure tables', () => {
+    const tables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).all().map(r => r.name);
+
+    expect(tables).toContain('question_types');
+    expect(tables).toContain('question_type_settings');
+  });
+
+  test('initDatabase seeds the built-in question type catalog once', () => {
+    const rows = db.prepare('SELECT code, category, implementation_status FROM question_types ORDER BY sort_order').all();
+    const codes = rows.map(row => row.code);
+
+    expect(codes).toContain('vocab_en_cn_choice');
+    expect(codes).toContain('vocab_listening_choice');
+    expect(codes).toContain('phrase_cn_en_fill');
+    expect(codes).toContain('sentence_ordering');
+    expect(codes).toContain('reading_task_based');
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(rows.some(row => row.category === 'vocabulary')).toBe(true);
+    expect(rows.some(row => row.category === 'reading')).toBe(true);
+    expect(rows.find(row => row.code === 'grammar_choice').implementation_status).toBe('planned');
+  });
+
+  test('initDatabase seeds question type settings idempotently', () => {
+    const beforeTypes = db.prepare('SELECT COUNT(*) AS count FROM question_types').get().count;
+    const beforeSettings = db.prepare('SELECT COUNT(*) AS count FROM question_type_settings').get().count;
+
+    initDatabase(db);
+
+    const afterTypes = db.prepare('SELECT COUNT(*) AS count FROM question_types').get().count;
+    const afterSettings = db.prepare('SELECT COUNT(*) AS count FROM question_type_settings').get().count;
+
+    expect(afterTypes).toBe(beforeTypes);
+    expect(afterSettings).toBe(beforeSettings);
+    expect(afterSettings).toBe(afterTypes);
+  });
 });
