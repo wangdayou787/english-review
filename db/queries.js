@@ -429,6 +429,93 @@ function getRecentReviewTaskItems(db, userId, planId, limitDays) {
 // Question Types
 // ═══════════════════════════════════════════════════════════════
 
+function parseJsonOrDefault(value, fallback) {
+  try {
+    return JSON.parse(value || JSON.stringify(fallback));
+  } catch (err) {
+    return fallback;
+  }
+}
+
+function getWordQuestionDetails(db, itemId) {
+  const row = db.prepare('SELECT * FROM word_question_details WHERE item_id = ?').get(itemId);
+  if (!row) return null;
+  return {
+    ...row,
+    inflections: parseJsonOrDefault(row.inflections_json, {}),
+  };
+}
+
+function saveWordQuestionDetails(db, itemId, { baseForm, firstLetterHint, usageNote, inflections }) {
+  db.prepare(
+    `INSERT INTO word_question_details (item_id, base_form, first_letter_hint, usage_note, inflections_json)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(item_id) DO UPDATE SET
+       base_form = excluded.base_form,
+       first_letter_hint = excluded.first_letter_hint,
+       usage_note = excluded.usage_note,
+       inflections_json = excluded.inflections_json`
+  ).run(
+    itemId,
+    baseForm || null,
+    firstLetterHint || null,
+    usageNote || null,
+    JSON.stringify(inflections && Object.keys(inflections).length ? inflections : {}),
+  );
+}
+
+function getPhraseChoiceQuestionsByItem(db, itemId) {
+  return db.prepare(
+    'SELECT * FROM phrase_choice_questions WHERE item_id = ? ORDER BY id'
+  ).all(itemId);
+}
+
+function savePhraseChoiceQuestion(db, { itemId, promptSentence, correctPhrase, distractorA, distractorB, distractorC, explanation }) {
+  const result = db.prepare(
+    `INSERT INTO phrase_choice_questions (
+       item_id, prompt_sentence, correct_phrase, distractor_a, distractor_b, distractor_c, explanation
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    itemId,
+    promptSentence,
+    correctPhrase,
+    distractorA,
+    distractorB,
+    distractorC,
+    explanation || null,
+  );
+  return result.lastInsertRowid;
+}
+
+function deletePhraseChoiceQuestion(db, id) {
+  db.prepare('DELETE FROM phrase_choice_questions WHERE id = ?').run(id);
+}
+
+function getSentenceOrderDetails(db, itemId) {
+  const row = db.prepare('SELECT * FROM sentence_order_details WHERE item_id = ?').get(itemId);
+  if (!row) return null;
+  return {
+    ...row,
+    tokens: parseJsonOrDefault(row.tokens_json, []),
+  };
+}
+
+function saveSentenceOrderDetails(db, itemId, { answerSentence, tokens, hintText }) {
+  db.prepare(
+    `INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json, hint_text)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(item_id) DO UPDATE SET
+       answer_sentence = excluded.answer_sentence,
+       tokens_json = excluded.tokens_json,
+       hint_text = excluded.hint_text`
+  ).run(
+    itemId,
+    answerSentence,
+    JSON.stringify(Array.isArray(tokens) ? tokens : []),
+    hintText || null,
+  );
+}
+
 function safeParseDisplayOptions(value) {
   try {
     return { ...DEFAULT_DISPLAY_OPTIONS, ...JSON.parse(value || '{}') };
@@ -563,6 +650,13 @@ module.exports = {
   saveDailyReviewTasks,
   getReviewTaskDates,
   getRecentReviewTaskItems,
+  getWordQuestionDetails,
+  saveWordQuestionDetails,
+  getPhraseChoiceQuestionsByItem,
+  savePhraseChoiceQuestion,
+  deletePhraseChoiceQuestion,
+  getSentenceOrderDetails,
+  saveSentenceOrderDetails,
   getQuestionTypeGroups,
   updateQuestionTypeSettings,
   getAvailableQuestionTypesForItemType,
