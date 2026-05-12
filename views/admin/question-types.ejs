@@ -1,0 +1,89 @@
+<h1>题型设置</h1>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+<% if (typeof success !== 'undefined' && success) { %>
+  <div class="alert alert-success"><%= success %></div>
+<% } %>
+
+<section class="panel mb-2">
+  <h2 class="mb-1">题型生成规则</h2>
+  <p class="text-muted">只有“可用于练习”并已启用的题型会进入学生练习；“后续支持”的题型可先配置，不会生成到学生端。</p>
+</section>
+
+<form method="POST" action="/admin/question-types" class="question-type-settings">
+  <% let index = 0; %>
+  <% groups.forEach(group => { %>
+    <section class="panel question-type-group mb-2">
+      <h2><%= group.label %></h2>
+      <% if (group.types.length === 0) { %>
+        <p class="text-muted">暂无题型</p>
+      <% } %>
+      <div class="question-type-list">
+        <% group.types.forEach(type => { %>
+          <article class="question-type-card">
+            <div class="question-type-card-header">
+              <div>
+                <h3><%= type.name %></h3>
+                <p class="text-muted"><%= type.description %></p>
+              </div>
+              <span class="status-pill <%= type.implementation_status === 'available' ? 'status-available' : 'status-planned' %>">
+                <%= type.implementation_status === 'available' ? '可用于练习' : '后续支持' %>
+              </span>
+            </div>
+
+            <input type="hidden" name="settings[<%= index %>][code]" value="<%= type.code %>">
+
+            <label class="check-row">
+              <input type="checkbox" name="settings[<%= index %>][enabled]" <%= type.enabled ? 'checked' : '' %>>
+              <span>启用此题型</span>
+            </label>
+
+            <div class="form-group">
+              <label>比例权重</label>
+              <input type="number" min="0" max="100" name="settings[<%= index %>][weight]" value="<%= type.weight %>">
+            </div>
+
+            <div class="form-group">
+              <label>题目说明文案</label>
+              <input type="text" name="settings[<%= index %>][instructionText]" value="<%= type.instruction_text %>">
+            </div>
+
+            <div class="form-group">
+              <label>按钮文案</label>
+              <input type="text" name="settings[<%= index %>][primaryActionText]" value="<%= type.primary_action_text %>">
+            </div>
+
+            <div class="form-group">
+              <label>提示文案</label>
+              <input type="text" name="settings[<%= index %>][hintText]" value="<%= type.hint_text %>">
+            </div>
+
+            <div class="display-option-grid">
+              <label class="check-row">
+                <input type="checkbox" name="settings[<%= index %>][showExample]" <%= type.display_options.showExample ? 'checked' : '' %>>
+                <span>显示例句</span>
+              </label>
+              <label class="check-row">
+                <input type="checkbox" name="settings[<%= index %>][showPartOfSpeech]" <%= type.display_options.showPartOfSpeech ? 'checked' : '' %>>
+                <span>显示词性</span>
+              </label>
+              <label class="check-row">
+                <input type="checkbox" name="settings[<%= index %>][showChineseMeaning]" <%= type.display_options.showChineseMeaning ? 'checked' : '' %>>
+                <span>显示中文释义</span>
+              </label>
+              <label class="check-row">
+                <input type="checkbox" name="settings[<%= index %>][showFirstLetterHint]" <%= type.display_options.showFirstLetterHint ? 'checked' : '' %>>
+                <span>显示首字母提示</span>
+              </label>
+            </div>
+          </article>
+          <% index += 1; %>
+        <% }) %>
+      </div>
+    </section>
+  <% }) %>
+
+  <button type="submit" class="btn btn-primary">保存题型设置</button>
+</form>

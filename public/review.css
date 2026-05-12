@@ -359,6 +359,58 @@
   accent-color: var(--primary);
 }
 
+.question-type-settings {
+  display: grid;
+  gap: 1rem;
+}
+
+.question-type-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.question-type-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--surface);
+}
+
+.question-type-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-available {
+  color: #137333;
+  background: #e6f4ea;
+}
+
+.status-planned {
+  color: #5f6368;
+  background: #f1f3f4;
+}
+
+.display-option-grid {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
 @media (max-width: 720px) {
   .metric-grid,
   .stats-cards {

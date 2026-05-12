@@ -69,6 +69,44 @@ router.post('/admin/review-plan', (req, res) => {
   res.redirect('/admin/review-plan');
 });
 
+// ── Question Types ────────────────────────────────────────────────
+router.get('/admin/question-types', (req, res) => {
+  const groups = queries.getQuestionTypeGroups(req.app.locals.db);
+  renderWithLayout(res, 'admin/question-types', { groups, error: null, success: null }, '题型设置');
+});
+
+function normalizeQuestionTypeSettings(rawSettings) {
+  const settingsArray = Array.isArray(rawSettings) ? rawSettings : rawSettings ? Object.values(rawSettings) : [];
+  return settingsArray.map(setting => ({
+    code: setting.code,
+    enabled: setting.enabled === 'on' || setting.enabled === '1' || setting.enabled === true,
+    weight: setting.weight,
+    instructionText: setting.instructionText,
+    primaryActionText: setting.primaryActionText,
+    hintText: setting.hintText,
+    displayOptions: {
+      showExample: setting.showExample === 'on',
+      showPartOfSpeech: setting.showPartOfSpeech === 'on',
+      showChineseMeaning: setting.showChineseMeaning === 'on',
+      showFirstLetterHint: setting.showFirstLetterHint === 'on',
+    },
+  }));
+}
+
+router.post('/admin/question-types', (req, res) => {
+  const db = req.app.locals.db;
+  try {
+    queries.updateQuestionTypeSettings(db, normalizeQuestionTypeSettings(req.body.settings));
+    res.redirect('/admin/question-types');
+  } catch (err) {
+    renderWithLayout(res, 'admin/question-types', {
+      groups: queries.getQuestionTypeGroups(db),
+      error: err.message,
+      success: null,
+    }, '题型设置');
+  }
+});
+
 // ── Textbooks ────────────────────────────────────────────────────
 
 router.get('/admin/textbooks', (req, res) => {
