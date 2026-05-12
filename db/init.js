@@ -196,6 +196,18 @@ function initDatabase(db) {
       SELECT RAISE(ABORT, 'sentence_order_details requires a grammar item');
     END;
 
+    CREATE TRIGGER IF NOT EXISTS trg_items_type_guard
+    BEFORE UPDATE OF type ON items
+    FOR EACH ROW
+    WHEN NEW.type <> OLD.type AND (
+      EXISTS(SELECT 1 FROM word_question_details WHERE item_id = OLD.id) OR
+      EXISTS(SELECT 1 FROM phrase_choice_questions WHERE item_id = OLD.id) OR
+      EXISTS(SELECT 1 FROM sentence_order_details WHERE item_id = OLD.id)
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'items.type cannot change while support rows exist');
+    END;
+
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL

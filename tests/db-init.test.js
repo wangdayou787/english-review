@@ -247,6 +247,54 @@ describe('db/init.js — database initialization', () => {
     }).toThrow();
   });
 
+  test('items.type cannot change when word support rows exist', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Type Lock Book')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const wordId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'word', 'apple', '苹果')"
+    ).run(unitId).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO word_question_details (item_id, base_form, inflections_json) VALUES (?, 'apple', '{}')"
+    ).run(wordId);
+
+    expect(() => {
+      db.prepare("UPDATE items SET type = 'grammar' WHERE id = ?").run(wordId);
+    }).toThrow();
+  });
+
+  test('items.type cannot change when phrase support rows exist', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Type Lock Book 2')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const phraseId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'phrase', 'look after', '照顾')"
+    ).run(unitId).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO phrase_choice_questions (item_id, prompt_sentence, correct_phrase, distractor_a, distractor_b, distractor_c, explanation) VALUES (?, 'She often ___ her sister.', 'looks after', 'looks up', 'looks for', 'looks at', '固定搭配')"
+    ).run(phraseId);
+
+    expect(() => {
+      db.prepare("UPDATE items SET type = 'word' WHERE id = ?").run(phraseId);
+    }).toThrow();
+  });
+
+  test('items.type cannot change when grammar support rows exist', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Type Lock Book 3')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const grammarId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'grammar', 'She is happy', '她很开心')"
+    ).run(unitId).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json) VALUES (?, 'She is happy', '[\"She\",\"is\",\"happy\"]')"
+    ).run(grammarId);
+
+    expect(() => {
+      db.prepare("UPDATE items SET type = 'phrase' WHERE id = ?").run(grammarId);
+    }).toThrow();
+  });
+
   test('daily_review_tasks prevents duplicate item assignment for the same student and date', () => {
     const textbookId = db.prepare('INSERT INTO textbooks (name) VALUES (?)').run('Schema Book').lastInsertRowid;
     const unitId = db.prepare('INSERT INTO units (textbook_id, name) VALUES (?, ?)').run(textbookId, 'Unit 1').lastInsertRowid;
