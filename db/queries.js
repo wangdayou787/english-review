@@ -447,6 +447,14 @@ function getWordQuestionDetails(db, itemId) {
 }
 
 function saveWordQuestionDetails(db, itemId, { baseForm, firstLetterHint, usageNote, inflections }) {
+  const normalizedInflections = Object.fromEntries(
+    Object.entries(inflections || {}).filter(([, value]) => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') return value.trim() !== '';
+      return true;
+    })
+  );
+
   db.prepare(
     `INSERT INTO word_question_details (item_id, base_form, first_letter_hint, usage_note, inflections_json)
      VALUES (?, ?, ?, ?, ?)
@@ -460,7 +468,7 @@ function saveWordQuestionDetails(db, itemId, { baseForm, firstLetterHint, usageN
     baseForm || null,
     firstLetterHint || null,
     usageNote || null,
-    JSON.stringify(inflections && Object.keys(inflections).length ? inflections : {}),
+    JSON.stringify(Object.keys(normalizedInflections).length ? normalizedInflections : {}),
   );
 }
 

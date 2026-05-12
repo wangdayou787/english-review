@@ -90,6 +90,25 @@ describe('question type query helpers', () => {
     expect(detail.inflections.past_tense).toBe('studied');
   });
 
+  test('saveWordQuestionDetails normalizes blank inflection values to empty JSON', () => {
+    const textbookId = queries.createTextbook(db, 'Word Book');
+    const unitId = queries.createUnit(db, textbookId, 'Unit 2');
+    const itemId = queries.createItem(db, { unitId, type: 'word', english: 'study', chinese: '学习' });
+
+    queries.saveWordQuestionDetails(db, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 's',
+      usageNote: '',
+      inflections: { past_tense: '', present_participle: '   ', plural: null },
+    });
+
+    const row = db.prepare('SELECT inflections_json FROM word_question_details WHERE item_id = ?').get(itemId);
+    expect(row.inflections_json).toBe('{}');
+
+    const detail = queries.getWordQuestionDetails(db, itemId);
+    expect(detail.inflections).toEqual({});
+  });
+
   test('savePhraseChoiceQuestion and deletePhraseChoiceQuestion manage explicit phrase questions', () => {
     const textbookId = queries.createTextbook(db, 'Phrase Book');
     const unitId = queries.createUnit(db, textbookId, 'Unit 1');
