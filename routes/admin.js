@@ -128,38 +128,17 @@ function normalizePhraseChoiceRows(rawRows) {
     distractorC: String(row?.distractor_c || '').trim(),
     explanation: String(row?.explanation || '').trim(),
   })).filter((row) => (
-    row.promptSentence ||
-    row.correctPhrase ||
-    row.distractorA ||
-    row.distractorB ||
-    row.distractorC ||
-    row.explanation
+    row.promptSentence &&
+    row.correctPhrase &&
+    row.distractorA &&
+    row.distractorB &&
+    row.distractorC
   ));
 }
 
 function normalizeSentenceTokens(tokensText, answerSentence) {
   const source = String(tokensText || answerSentence || '').trim();
   return source ? source.split(/\s+/) : [];
-}
-
-function mergeWordQuestionDetails(existing, submitted) {
-  const merged = {
-    baseForm: submitted.baseForm || existing?.base_form || '',
-    firstLetterHint: submitted.firstLetterHint || existing?.first_letter_hint || '',
-    usageNote: submitted.usageNote || existing?.usage_note || '',
-    inflections: { ...(existing?.inflections || {}) },
-  };
-
-  for (const key of WORD_INFLECTION_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(submitted.inflections || {}, key)) {
-      const value = submitted.inflections[key];
-      if (value !== undefined && value !== null && value !== '') {
-        merged.inflections[key] = value;
-      }
-    }
-  }
-
-  return merged;
 }
 
 function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
@@ -306,6 +285,33 @@ router.post('/admin/items/:id/edit', (req, res) => {
   const item = queries.getItemById(db, req.params.id);
   if (!item) return res.redirect('/admin/textbooks');
   const { type, english, chinese, pos, example, examples } = req.body;
+  if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
+    const unit = queries.getUnitById(db, item.unit_id);
+    const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+    return renderWithLayout(res, 'admin/item-edit', {
+      textbook,
+      unit,
+      item: {
+        ...item,
+        type,
+        english,
+        chinese,
+        pos,
+        example: normalizeExampleText(type, example, examples),
+      },
+      wordQuestionDetail: queries.getWordQuestionDetails(db, item.id),
+      phraseChoiceQuestions: queries.getPhraseChoiceQuestionsByItem(db, item.id),
+      sentenceOrderDetail: queries.getSentenceOrderDetails(db, item.id),
+      error: '英文和中文不能为空',
+    }, '编辑条目');
+  }
+
+  if (type !== item.type) {
+    db.prepare('DELETE FROM word_question_details WHERE item_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM sentence_order_details WHERE item_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM phrase_choice_questions WHERE item_id = ?').run(req.params.id);
+  }
+
   queries.updateItem(db, req.params.id, {
     type,
     english,
@@ -313,16 +319,11 @@ router.post('/admin/items/:id/edit', (req, res) => {
     pos,
     example: normalizeExampleText(type, example, examples),
   });
-  if (type === 'word') {
-    const existingWordDetail = queries.getWordQuestionDetails(db, req.params.id);
-    const submittedWordDetail = normalizeWordQuestionDetails(req.body.word_detail);
-    queries.saveWordQuestionDetails(
-      db,
-      req.params.id,
-      mergeWordQuestionDetails(existingWordDetail, submittedWordDetail),
-    );
+
+  if (type === 'word' && req.body.word_detail) {
+    queries.saveWordQuestionDetails(db, req.params.id, normalizeWordQuestionDetails(req.body.word_detail));
   }
-  if (type === 'phrase') {
+  if (type === 'phrase' && req.body.phrase_choice) {
     for (const row of normalizePhraseChoiceRows(req.body.phrase_choice)) {
       if (row.id) {
         if (getPhraseChoiceQuestionForItem(db, req.params.id, row.id)) {
@@ -333,7 +334,7 @@ router.post('/admin/items/:id/edit', (req, res) => {
       }
     }
   }
-  if (type === 'grammar') {
+  if (type === 'grammar' && req.body.sentence_order) {
     const sentenceOrder = req.body.sentence_order || {};
     queries.saveSentenceOrderDetails(db, req.params.id, {
       answerSentence: String(sentenceOrder.answer_sentence || '').trim(),

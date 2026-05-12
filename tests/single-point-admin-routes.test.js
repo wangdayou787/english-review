@@ -131,7 +131,7 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
-  test('existing word inflections are preserved when an edit omits some fields', async () => {
+  test('admin can clear optional word detail fields on edit', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId } = seedItem(app.locals.db, 'word');
     queries.saveWordQuestionDetails(app.locals.db, itemId, {
@@ -152,18 +152,21 @@ describe('admin single-point item edit routes', () => {
       chinese: '学习',
       pos: 'verb',
       example: '',
-      'word_detail[base_form]': 'study',
-      'word_detail[first_letter_hint]': 'st',
-      'word_detail[usage_note]': '更新说明',
-      'word_detail[past_tense]': 'studied',
+      'word_detail[base_form]': '',
+      'word_detail[first_letter_hint]': '',
+      'word_detail[usage_note]': '',
+      'word_detail[plural]': '',
+      'word_detail[past_tense]': '',
+      'word_detail[present_participle]': '',
+      'word_detail[noun]': '',
     });
 
     const detail = queries.getWordQuestionDetails(app.locals.db, itemId);
     expect(res.statusCode).toBe(302);
-    expect(detail.inflections.plural).toBe('studies');
-    expect(detail.inflections.present_participle).toBe('studying');
-    expect(detail.inflections.noun).toBe('study');
-    expect(detail.inflections.past_tense).toBe('studied');
+    expect(detail.base_form).toBeNull();
+    expect(detail.first_letter_hint).toBeNull();
+    expect(detail.usage_note).toBeNull();
+    expect(detail.inflections).toEqual({});
 
     app.cleanup();
   });
@@ -265,6 +268,31 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('partial phrase choice rows are ignored', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'phrase');
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'phrase',
+      english: 'look after',
+      chinese: '照顾',
+      pos: '',
+      example: '',
+      'phrase_choice[0][prompt_sentence]': 'She often ___ her sister.',
+      'phrase_choice[0][correct_phrase]': '',
+      'phrase_choice[0][distractor_a]': 'looks up',
+      'phrase_choice[0][distractor_b]': 'looks for',
+      'phrase_choice[0][distractor_c]': 'looks at',
+      'phrase_choice[0][explanation]': '固定搭配',
+    });
+
+    const rows = queries.getPhraseChoiceQuestionsByItem(app.locals.db, itemId);
+    expect(res.statusCode).toBe(302);
+    expect(rows).toHaveLength(0);
+
+    app.cleanup();
+  });
+
   test('admin can save sentence order details from item edit', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId, unitId } = seedItem(app.locals.db, 'grammar');
@@ -287,6 +315,64 @@ describe('admin single-point item edit routes', () => {
     expect(detail.answer_sentence).toBe('She likes music');
     expect(detail.tokens).toEqual(['She', 'likes', 'music']);
     expect(detail.hint_text).toBe('先找主语。');
+
+    app.cleanup();
+  });
+
+  test('word and phrase edits reject blank core english/chinese fields', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId: wordItemId } = seedItem(app.locals.db, 'word');
+    const { itemId: phraseItemId } = seedItem(app.locals.db, 'phrase');
+
+    const wordRes = await requestApp(app, 'POST', `/admin/items/${wordItemId}/edit`, {
+      type: 'word',
+      english: '',
+      chinese: '学习',
+      pos: 'verb',
+      example: '',
+    });
+    const phraseRes = await requestApp(app, 'POST', `/admin/items/${phraseItemId}/edit`, {
+      type: 'phrase',
+      english: 'look after',
+      chinese: '',
+      pos: '',
+      example: '',
+    });
+
+    const wordItem = queries.getItemById(app.locals.db, wordItemId);
+    const phraseItem = queries.getItemById(app.locals.db, phraseItemId);
+    expect(wordRes.statusCode).toBe(200);
+    expect(phraseRes.statusCode).toBe(200);
+    expect(wordItem.english).toBe('study');
+    expect(phraseItem.chinese).toBe('照顾');
+
+    app.cleanup();
+  });
+
+  test('type switch clears stale subtype data from the previous type', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'word');
+    queries.saveWordQuestionDetails(app.locals.db, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 's',
+      usageNote: '动词原形',
+      inflections: { past_tense: 'studied' },
+    });
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'grammar',
+      english: 'She likes music',
+      chinese: '她喜欢音乐',
+      pos: '',
+      example: '',
+      'sentence_order[answer_sentence]': 'She likes music',
+      'sentence_order[tokens_text]': 'She likes music',
+      'sentence_order[hint_text]': '先找主语。',
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(queries.getWordQuestionDetails(app.locals.db, itemId)).toBeNull();
+    expect(queries.getSentenceOrderDetails(app.locals.db, itemId)).not.toBeNull();
 
     app.cleanup();
   });
