@@ -2,6 +2,7 @@
  * Database query helpers. Thin wrappers around SQLite queries.
  * All functions receive db as first argument (from app.locals.db).
  */
+const { CATEGORY_LABELS, DEFAULT_DISPLAY_OPTIONS } = require('../data/question-types');
 
 // ═══════════════════════════════════════════════════════════════
 // Textbooks
@@ -424,6 +425,102 @@ function getRecentReviewTaskItems(db, userId, planId, limitDays) {
   ).all(userId, planId, ...dates);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Question Types
+// ═══════════════════════════════════════════════════════════════
+
+function safeParseDisplayOptions(value) {
+  try {
+    return { ...DEFAULT_DISPLAY_OPTIONS, ...JSON.parse(value || '{}') };
+  } catch (err) {
+    return { ...DEFAULT_DISPLAY_OPTIONS };
+  }
+}
+
+function normalizeQuestionTypeRow(row) {
+  return {
+    ...row,
+    enabled: row.enabled === 1,
+    supported_item_types: JSON.parse(row.supported_item_types || '[]'),
+    display_options: safeParseDisplayOptions(row.display_options),
+  };
+}
+
+function getQuestionTypeRows(db) {
+  return db.prepare(
+    `SELECT question_types.*,
+            COALESCE(question_type_settings.enabled, CASE WHEN question_types.implementation_status = 'available' THEN 1 ELSE 0 END) AS enabled,
+            COALESCE(question_type_settings.weight, question_types.default_weight) AS weight,
+            COALESCE(question_type_settings.instruction_text, '') AS instruction_text,
+            COALESCE(question_type_settings.primary_action_text, '') AS primary_action_text,
+            COALESCE(question_type_settings.hint_text, '') AS hint_text,
+            COALESCE(question_type_settings.display_options, '{}') AS display_options
+     FROM question_types
+     LEFT JOIN question_type_settings ON question_type_settings.question_type_code = question_types.code
+     ORDER BY question_types.sort_order, question_types.id`
+  ).all().map(normalizeQuestionTypeRow);
+}
+
+function getQuestionTypeGroups(db) {
+  const groups = Object.entries(CATEGORY_LABELS).map(([category, label]) => ({ category, label, types: [] }));
+  const byCategory = new Map(groups.map(group => [group.category, group]));
+
+  for (const row of getQuestionTypeRows(db)) {
+    const group = byCategory.get(row.category);
+    if (group) group.types.push(row);
+  }
+
+  return groups;
+}
+
+function validateQuestionTypeWeight(weight) {
+  const parsed = Number.parseInt(weight, 10);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
+    throw new Error('题型比例必须是 0 到 100 的整数');
+  }
+  return parsed;
+}
+
+function updateQuestionTypeSettings(db, settings) {
+  const existingCodes = new Set(db.prepare('SELECT code FROM question_types').all().map(row => row.code));
+  const update = db.prepare(
+    `INSERT INTO question_type_settings (question_type_code, enabled, weight, instruction_text, primary_action_text, hint_text, display_options, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(question_type_code) DO UPDATE SET
+       enabled = excluded.enabled,
+       weight = excluded.weight,
+       instruction_text = excluded.instruction_text,
+       primary_action_text = excluded.primary_action_text,
+       hint_text = excluded.hint_text,
+       display_options = excluded.display_options,
+       updated_at = datetime('now')`
+  );
+  const tx = db.transaction(() => {
+    for (const setting of settings) {
+      if (!existingCodes.has(setting.code)) continue;
+      update.run(
+        setting.code,
+        setting.enabled ? 1 : 0,
+        validateQuestionTypeWeight(setting.weight),
+        String(setting.instructionText || ''),
+        String(setting.primaryActionText || ''),
+        String(setting.hintText || ''),
+        JSON.stringify({ ...DEFAULT_DISPLAY_OPTIONS, ...(setting.displayOptions || {}) })
+      );
+    }
+  });
+  tx();
+}
+
+function getAvailableQuestionTypesForItemType(db, itemType) {
+  return getQuestionTypeRows(db).filter(row => (
+    row.implementation_status === 'available' &&
+    row.enabled &&
+    row.weight > 0 &&
+    row.supported_item_types.includes(itemType)
+  ));
+}
+
 module.exports = {
   getTextbooks,
   createTextbook,
@@ -466,4 +563,7 @@ module.exports = {
   saveDailyReviewTasks,
   getReviewTaskDates,
   getRecentReviewTaskItems,
+  getQuestionTypeGroups,
+  updateQuestionTypeSettings,
+  getAvailableQuestionTypesForItemType,
 };
