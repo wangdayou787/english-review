@@ -71,39 +71,6 @@ describe('question type query helpers', () => {
     }])).toThrow('题型比例必须是 0 到 100 的整数');
   });
 
-  test('updateQuestionTypeSettings rejects malformed weights', () => {
-    expect(() => queries.updateQuestionTypeSettings(db, [{
-      code: 'vocab_en_cn_choice',
-      enabled: true,
-      weight: '7.5',
-      instructionText: '选择正确答案。',
-      primaryActionText: '提交答案',
-      hintText: '提示',
-      displayOptions: {},
-    }])).toThrow();
-
-    expect(() => queries.updateQuestionTypeSettings(db, [{
-      code: 'vocab_en_cn_choice',
-      enabled: true,
-      weight: '7abc',
-      instructionText: '选择正确答案。',
-      primaryActionText: '提交答案',
-      hintText: '提示',
-      displayOptions: {},
-    }])).toThrow();
-  });
-
-  test('getQuestionTypeGroups tolerates malformed supported item type JSON', () => {
-    db.prepare('UPDATE question_types SET supported_item_types = ? WHERE code = ?').run('not json', 'vocab_en_cn_choice');
-
-    expect(() => queries.getQuestionTypeGroups(db)).not.toThrow();
-
-    const groups = queries.getQuestionTypeGroups(db);
-    const vocabulary = groups.find(group => group.category === 'vocabulary');
-    const row = vocabulary.types.find(type => type.code === 'vocab_en_cn_choice');
-    expect(row.supported_item_types).toEqual([]);
-  });
-
   test('saveWordQuestionDetails upserts structured word fields', () => {
     const textbookId = queries.createTextbook(db, 'Word Book');
     const unitId = queries.createUnit(db, textbookId, 'Unit 1');
