@@ -126,7 +126,7 @@ function initDatabase(db) {
       base_form          TEXT,
       first_letter_hint  TEXT,
       usage_note         TEXT,
-      inflections_json   TEXT    NOT NULL DEFAULT '{}'
+      inflections_json   TEXT    NOT NULL DEFAULT '{}' CHECK(json_valid(inflections_json))
     );
 
     CREATE TABLE IF NOT EXISTS phrase_choice_questions (
@@ -144,9 +144,57 @@ function initDatabase(db) {
     CREATE TABLE IF NOT EXISTS sentence_order_details (
       item_id          INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
       answer_sentence  TEXT    NOT NULL,
-      tokens_json      TEXT    NOT NULL DEFAULT '[]',
+      tokens_json      TEXT    NOT NULL DEFAULT '[]' CHECK(json_valid(tokens_json)),
       hint_text        TEXT
     );
+
+    CREATE TRIGGER IF NOT EXISTS trg_word_question_details_item_type_ins
+    BEFORE INSERT ON word_question_details
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'word'
+    BEGIN
+      SELECT RAISE(ABORT, 'word_question_details requires a word item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_word_question_details_item_type_upd
+    BEFORE UPDATE OF item_id ON word_question_details
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'word'
+    BEGIN
+      SELECT RAISE(ABORT, 'word_question_details requires a word item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_phrase_choice_questions_item_type_ins
+    BEFORE INSERT ON phrase_choice_questions
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'phrase'
+    BEGIN
+      SELECT RAISE(ABORT, 'phrase_choice_questions requires a phrase item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_phrase_choice_questions_item_type_upd
+    BEFORE UPDATE OF item_id ON phrase_choice_questions
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'phrase'
+    BEGIN
+      SELECT RAISE(ABORT, 'phrase_choice_questions requires a phrase item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_sentence_order_details_item_type_ins
+    BEFORE INSERT ON sentence_order_details
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'grammar'
+    BEGIN
+      SELECT RAISE(ABORT, 'sentence_order_details requires a grammar item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_sentence_order_details_item_type_upd
+    BEFORE UPDATE OF item_id ON sentence_order_details
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'grammar'
+    BEGIN
+      SELECT RAISE(ABORT, 'sentence_order_details requires a grammar item');
+    END;
 
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,

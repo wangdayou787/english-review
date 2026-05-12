@@ -195,6 +195,58 @@ describe('db/init.js — database initialization', () => {
     expect(row).toBeUndefined();
   });
 
+  test('single-point support tables reject mismatched item types', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Type Guard Book')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const grammarId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'grammar', 'She is happy', '她很开心')"
+    ).run(unitId).lastInsertRowid;
+    const wordId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'word', 'apple', '苹果')"
+    ).run(unitId).lastInsertRowid;
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO word_question_details (item_id, base_form, inflections_json) VALUES (?, 'apple', '{}')"
+      ).run(grammarId);
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO phrase_choice_questions (item_id, prompt_sentence, correct_phrase, distractor_a, distractor_b, distractor_c, explanation) VALUES (?, 'He ___ every day.', 'runs', 'run', 'running', 'ran', '习惯动作')"
+      ).run(wordId);
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json) VALUES (?, 'She is happy', '[\"She\",\"is\",\"happy\"]')"
+      ).run(wordId);
+    }).toThrow();
+  });
+
+  test('single-point support tables reject invalid JSON payloads', () => {
+    const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('JSON Guard Book')").run().lastInsertRowid;
+    const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;
+    const wordId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'word', 'apple', '苹果')"
+    ).run(unitId).lastInsertRowid;
+    const grammarId = db.prepare(
+      "INSERT INTO items (unit_id, type, english, chinese) VALUES (?, 'grammar', 'She is happy', '她很开心')"
+    ).run(unitId).lastInsertRowid;
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO word_question_details (item_id, base_form, inflections_json) VALUES (?, 'apple', '{bad')"
+      ).run(wordId);
+    }).toThrow();
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO sentence_order_details (item_id, answer_sentence, tokens_json) VALUES (?, 'She is happy', '{bad')"
+      ).run(grammarId);
+    }).toThrow();
+  });
+
   test('daily_review_tasks prevents duplicate item assignment for the same student and date', () => {
     const textbookId = db.prepare('INSERT INTO textbooks (name) VALUES (?)').run('Schema Book').lastInsertRowid;
     const unitId = db.prepare('INSERT INTO units (textbook_id, name) VALUES (?, ?)').run(textbookId, 'Unit 1').lastInsertRowid;
