@@ -148,6 +148,20 @@
   color: var(--text);
 }
 
+.exercise-instruction,
+.exercise-hint {
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.exercise-hint {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid #a8c7fa;
+  background: #f8fbff;
+}
+
 .choice-option {
   display: flex;
   gap: 0.6rem;

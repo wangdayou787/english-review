@@ -22,10 +22,14 @@
         </span>
       </div>
 
+      <% if (ex.instruction_text) { %>
+        <p class="exercise-instruction"><%= ex.instruction_text %></p>
+      <% } %>
+
       <div class="exercise-question"><%= ex.question %></div>
 
       <% if (ex.exercise_type === 'listening') { %>
-        <button type="button" class="btn btn-sm mb-1 js-speak" data-question="<%= ex.question %>">🔊 播放发音</button>
+        <button type="button" class="btn btn-sm mb-1 js-speak" data-question="<%= ex.question %>"><%= ex.primary_action_text || '播放发音' %></button>
       <% } %>
 
       <!-- Hidden fields -->
@@ -52,6 +56,10 @@
       <% } else { %>
         <!-- Text input -->
         <input type="text" class="answer-input" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required>
+      <% } %>
+
+      <% if (ex.hint_text) { %>
+        <p class="exercise-hint"><%= ex.hint_text %></p>
       <% } %>
     </article>
   <% }) %>

@@ -16,12 +16,41 @@ function getExerciseTypesForItem(item) {
   }
 }
 
-/**
- * Pick a random exercise type suitable for the item.
- */
-function pickExerciseType(item) {
+function pickFallbackExerciseType(item) {
   const types = getExerciseTypesForItem(item);
   return types[Math.floor(Math.random() * types.length)];
+}
+
+function mapQuestionTypeToExerciseType(questionType, item) {
+  switch (questionType.code) {
+    case 'vocab_en_cn_choice': return item.type === 'word' ? 'en2cn' : null;
+    case 'vocab_listening_choice': return item.type === 'word' || item.type === 'phrase' ? 'listening' : null;
+    case 'phrase_cn_en_fill': return item.type === 'phrase' ? 'cn2en' : null;
+    case 'sentence_ordering': return item.type === 'grammar' ? 'sentence' : null;
+    default: return null;
+  }
+}
+
+function pickWeightedQuestionType(questionTypes, random = Math.random) {
+  const weighted = questionTypes.filter(type => Number(type.weight) > 0);
+  const total = weighted.reduce((sum, type) => sum + Number(type.weight), 0);
+  if (total <= 0) return null;
+
+  let target = random() * total;
+  for (const type of weighted) {
+    target -= Number(type.weight);
+    if (target < 0) return type;
+  }
+
+  return weighted[weighted.length - 1] || null;
+}
+
+function pickConfiguredQuestionType(item, db, options = {}) {
+  if (!db || typeof db.prepare !== 'function') return null;
+  const queries = require('../db/queries');
+  const candidates = queries.getAvailableQuestionTypesForItemType(db, item.type)
+    .filter(type => mapQuestionTypeToExerciseType(type, item));
+  return pickWeightedQuestionType(candidates, options.random || Math.random);
 }
 
 /**
@@ -63,12 +92,17 @@ function buildOptions(distractors, item) {
 /**
  * Create a single exercise from an item.
  */
-function createExercise(item, exerciseType, db) {
+function createExercise(item, exerciseType, db, template = {}) {
   const base = {
     item_id: item.id,
     exercise_type: exerciseType,
     correct_answer: null,
     question: null,
+    question_type_code: template.question_type_code,
+    instruction_text: template.instruction_text,
+    primary_action_text: template.primary_action_text,
+    hint_text: template.hint_text,
+    display_options: template.display_options,
   };
 
   switch (exerciseType) {
@@ -121,10 +155,23 @@ function createExercise(item, exerciseType, db) {
 /**
  * Generate exercises for a list of items.
  */
-function generateExercises(items, db) {
+function generateExercises(items, db, options = {}) {
   return items.map(item => {
-    const exType = pickExerciseType(item);
-    return createExercise(item, exType, db);
+    const configuredType = pickConfiguredQuestionType(item, db, options);
+    if (configuredType) {
+      const exerciseType = mapQuestionTypeToExerciseType(configuredType, item);
+      if (exerciseType) {
+        return createExercise(item, exerciseType, db, {
+          question_type_code: configuredType.code,
+          instruction_text: configuredType.instruction_text,
+          primary_action_text: configuredType.primary_action_text,
+          hint_text: configuredType.hint_text,
+          display_options: configuredType.display_options,
+        });
+      }
+    }
+
+    return createExercise(item, pickFallbackExerciseType(item), db);
   });
 }
 
@@ -203,4 +250,4 @@ function scoreAnswers(items, answers) {
   };
 }
 
-module.exports = { createExercise, generateExercises, scoreAnswer, scoreAnswers, EXERCISE_TYPES };
+module.exports = { createExercise, generateExercises, scoreAnswer, scoreAnswers, EXERCISE_TYPES, pickWeightedQuestionType };
