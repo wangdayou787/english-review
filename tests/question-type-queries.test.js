@@ -103,4 +103,64 @@ describe('question type query helpers', () => {
     const row = vocabulary.types.find(type => type.code === 'vocab_en_cn_choice');
     expect(row.supported_item_types).toEqual([]);
   });
+
+  test('saveWordQuestionDetails upserts structured word fields', () => {
+    const textbookId = queries.createTextbook(db, 'Word Book');
+    const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+    const itemId = queries.createItem(db, { unitId, type: 'word', english: 'study', chinese: '学习' });
+
+    queries.saveWordQuestionDetails(db, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 's',
+      usageNote: '动词原形',
+      inflections: { past_tense: 'studied', present_participle: 'studying' },
+    });
+
+    const detail = queries.getWordQuestionDetails(db, itemId);
+    expect(detail.base_form).toBe('study');
+    expect(detail.first_letter_hint).toBe('s');
+    expect(detail.usage_note).toBe('动词原形');
+    expect(detail.inflections.past_tense).toBe('studied');
+  });
+
+  test('savePhraseChoiceQuestion and deletePhraseChoiceQuestion manage explicit phrase questions', () => {
+    const textbookId = queries.createTextbook(db, 'Phrase Book');
+    const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+    const itemId = queries.createItem(db, { unitId, type: 'phrase', english: 'look after', chinese: '照顾' });
+
+    const questionId = queries.savePhraseChoiceQuestion(db, {
+      itemId,
+      promptSentence: 'She often ___ her sister after school.',
+      correctPhrase: 'looks after',
+      distractorA: 'looks up',
+      distractorB: 'looks for',
+      distractorC: 'looks at',
+      explanation: 'look after 表示照顾。',
+    });
+
+    let rows = queries.getPhraseChoiceQuestionsByItem(db, itemId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(questionId);
+
+    queries.deletePhraseChoiceQuestion(db, questionId);
+    rows = queries.getPhraseChoiceQuestionsByItem(db, itemId);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('saveSentenceOrderDetails stores normalized tokens', () => {
+    const textbookId = queries.createTextbook(db, 'Sentence Book');
+    const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+    const itemId = queries.createItem(db, { unitId, type: 'grammar', english: 'She likes music', chinese: '她喜欢音乐' });
+
+    queries.saveSentenceOrderDetails(db, itemId, {
+      answerSentence: 'She likes music',
+      tokens: ['She', 'likes', 'music'],
+      hintText: '先找主语。',
+    });
+
+    const detail = queries.getSentenceOrderDetails(db, itemId);
+    expect(detail.answer_sentence).toBe('She likes music');
+    expect(detail.tokens).toEqual(['She', 'likes', 'music']);
+    expect(detail.hint_text).toBe('先找主语。');
+  });
 });
