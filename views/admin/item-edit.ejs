@@ -1,3 +1,28 @@
+<%
+  const wordDetail = wordQuestionDetail || {};
+  const wordInflections = wordDetail.inflections || {};
+  const sentenceDetail = sentenceOrderDetail || {};
+  const sentenceTokensText = Array.isArray(sentenceDetail.tokens) ? sentenceDetail.tokens.join(' ') : '';
+  const phraseRows = (phraseChoiceQuestions || []).map((row) => ({
+    id: row.id,
+    prompt_sentence: row.prompt_sentence || '',
+    correct_phrase: row.correct_phrase || '',
+    distractor_a: row.distractor_a || '',
+    distractor_b: row.distractor_b || '',
+    distractor_c: row.distractor_c || '',
+    explanation: row.explanation || '',
+  }));
+  phraseRows.push({
+    id: '',
+    prompt_sentence: '',
+    correct_phrase: '',
+    distractor_a: '',
+    distractor_b: '',
+    distractor_c: '',
+    explanation: '',
+  });
+%>
+
 <p class="mb-1">
   <a href="/admin/textbooks">&larr; 课本列表</a> →
   <a href="/admin/textbooks/<%= textbook.id %>/units"><%= textbook.name %></a> →
@@ -23,6 +48,41 @@
   <div class="form-group"><label>中文</label><input type="text" name="chinese" value="<%= item.chinese || '' %>"></div>
   <div class="form-group"><label>词性</label><input type="text" name="pos" value="<%= item.pos || '' %>"></div>
   <div class="form-group"><label>例句</label><input type="text" name="example" value="<%= item.example || '' %>"></div>
+
+  <% if (item.type === 'word') { %>
+    <h2>题型扩展信息</h2>
+    <div class="form-group"><label>原形</label><input type="text" name="word_detail[base_form]" value="<%= wordDetail.base_form || '' %>"></div>
+    <div class="form-group"><label>首字母提示</label><input type="text" name="word_detail[first_letter_hint]" value="<%= wordDetail.first_letter_hint || '' %>"></div>
+    <div class="form-group"><label>用法说明</label><input type="text" name="word_detail[usage_note]" value="<%= wordDetail.usage_note || '' %>"></div>
+    <div class="form-group"><label>过去式</label><input type="text" name="word_detail[past_tense]" value="<%= wordInflections.past_tense || '' %>"></div>
+    <div class="form-group"><label>现在分词</label><input type="text" name="word_detail[present_participle]" value="<%= wordInflections.present_participle || '' %>"></div>
+  <% } %>
+
+  <% if (item.type === 'phrase') { %>
+    <h2>辨析题</h2>
+    <% phraseRows.forEach((row, index) => { %>
+      <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:1rem;border-radius:6px;">
+        <input type="hidden" name="phrase_choice[<%= index %>][id]" value="<%= row.id %>">
+        <div class="form-group"><label>题干句子</label><input type="text" name="phrase_choice[<%= index %>][prompt_sentence]" value="<%= row.prompt_sentence %>"></div>
+        <div class="form-group"><label>正确短语</label><input type="text" name="phrase_choice[<%= index %>][correct_phrase]" value="<%= row.correct_phrase %>"></div>
+        <div class="form-group"><label>干扰项 A</label><input type="text" name="phrase_choice[<%= index %>][distractor_a]" value="<%= row.distractor_a %>"></div>
+        <div class="form-group"><label>干扰项 B</label><input type="text" name="phrase_choice[<%= index %>][distractor_b]" value="<%= row.distractor_b %>"></div>
+        <div class="form-group"><label>干扰项 C</label><input type="text" name="phrase_choice[<%= index %>][distractor_c]" value="<%= row.distractor_c %>"></div>
+        <div class="form-group"><label>解析</label><input type="text" name="phrase_choice[<%= index %>][explanation]" value="<%= row.explanation %>"></div>
+        <% if (row.id) { %>
+          <button type="submit" formaction="/admin/phrase-choice-questions/<%= row.id %>/delete" class="btn">删除这道辨析题</button>
+        <% } %>
+      </div>
+    <% }) %>
+  <% } %>
+
+  <% if (item.type === 'grammar') { %>
+    <h2>连词成句增强版</h2>
+    <div class="form-group"><label>答案句子</label><input type="text" name="sentence_order[answer_sentence]" value="<%= sentenceDetail.answer_sentence || '' %>"></div>
+    <div class="form-group"><label>词块文本</label><input type="text" name="sentence_order[tokens_text]" value="<%= sentenceTokensText %>"></div>
+    <div class="form-group"><label>提示文案</label><input type="text" name="sentence_order[hint_text]" value="<%= sentenceDetail.hint_text || '' %>"></div>
+  <% } %>
+
   <button type="submit" class="btn btn-primary">保存</button>
   <a href="/admin/units/<%= unit.id %>/items" class="btn">取消</a>
 </form>

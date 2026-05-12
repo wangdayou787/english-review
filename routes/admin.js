@@ -93,6 +93,51 @@ function normalizeQuestionTypeSettings(rawSettings) {
   }));
 }
 
+function normalizeWordQuestionDetails(raw) {
+  return {
+    baseForm: raw?.base_form || '',
+    firstLetterHint: raw?.first_letter_hint || '',
+    usageNote: raw?.usage_note || '',
+    inflections: {
+      plural: raw?.plural || '',
+      third_person_singular: raw?.third_person_singular || '',
+      past_tense: raw?.past_tense || '',
+      past_participle: raw?.past_participle || '',
+      present_participle: raw?.present_participle || '',
+      comparative: raw?.comparative || '',
+      superlative: raw?.superlative || '',
+      adverb: raw?.adverb || '',
+      adjective: raw?.adjective || '',
+      noun: raw?.noun || '',
+    },
+  };
+}
+
+function normalizePhraseChoiceRows(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
+  return rows.map((row) => ({
+    id: row?.id ? parseInt(row.id, 10) : null,
+    promptSentence: String(row?.prompt_sentence || '').trim(),
+    correctPhrase: String(row?.correct_phrase || '').trim(),
+    distractorA: String(row?.distractor_a || '').trim(),
+    distractorB: String(row?.distractor_b || '').trim(),
+    distractorC: String(row?.distractor_c || '').trim(),
+    explanation: String(row?.explanation || '').trim(),
+  })).filter((row) => (
+    row.promptSentence ||
+    row.correctPhrase ||
+    row.distractorA ||
+    row.distractorB ||
+    row.distractorC ||
+    row.explanation
+  ));
+}
+
+function normalizeSentenceTokens(tokensText, answerSentence) {
+  const source = String(tokensText || answerSentence || '').trim();
+  return source ? source.split(/\s+/) : [];
+}
+
 router.post('/admin/question-types', (req, res) => {
   const db = req.app.locals.db;
   try {
@@ -212,7 +257,18 @@ router.get('/admin/items/:id/edit', (req, res) => {
   if (!item) return res.redirect('/admin/textbooks');
   const unit = queries.getUnitById(db, item.unit_id);
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
-  renderWithLayout(res, 'admin/item-edit', { textbook, unit, item, error: null }, '编辑条目');
+  const wordQuestionDetail = queries.getWordQuestionDetails(db, item.id);
+  const phraseChoiceQuestions = queries.getPhraseChoiceQuestionsByItem(db, item.id);
+  const sentenceOrderDetail = queries.getSentenceOrderDetails(db, item.id);
+  renderWithLayout(res, 'admin/item-edit', {
+    textbook,
+    unit,
+    item,
+    wordQuestionDetail,
+    phraseChoiceQuestions,
+    sentenceOrderDetail,
+    error: null,
+  }, '编辑条目');
 });
 
 router.post('/admin/items/:id/edit', (req, res) => {
@@ -227,7 +283,35 @@ router.post('/admin/items/:id/edit', (req, res) => {
     pos,
     example: normalizeExampleText(type, example, examples),
   });
+  if (type === 'word') {
+    queries.saveWordQuestionDetails(db, req.params.id, normalizeWordQuestionDetails(req.body.word_detail));
+  }
+  if (type === 'phrase') {
+    for (const row of normalizePhraseChoiceRows(req.body.phrase_choice)) {
+      if (row.id) {
+        queries.updatePhraseChoiceQuestion(db, row.id, row);
+      } else {
+        queries.savePhraseChoiceQuestion(db, { itemId: req.params.id, ...row });
+      }
+    }
+  }
+  if (type === 'grammar') {
+    const sentenceOrder = req.body.sentence_order || {};
+    queries.saveSentenceOrderDetails(db, req.params.id, {
+      answerSentence: String(sentenceOrder.answer_sentence || '').trim(),
+      tokens: normalizeSentenceTokens(sentenceOrder.tokens_text, sentenceOrder.answer_sentence),
+      hintText: String(sentenceOrder.hint_text || '').trim(),
+    });
+  }
   res.redirect(`/admin/units/${item.unit_id}/items`);
+});
+
+router.post('/admin/phrase-choice-questions/:id/delete', (req, res) => {
+  const db = req.app.locals.db;
+  const row = db.prepare('SELECT item_id FROM phrase_choice_questions WHERE id = ?').get(req.params.id);
+  if (!row) return res.redirect('/admin/textbooks');
+  queries.deletePhraseChoiceQuestion(db, req.params.id);
+  res.redirect(`/admin/items/${row.item_id}/edit`);
 });
 
 router.post('/admin/items/:id/delete', (req, res) => {
