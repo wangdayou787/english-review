@@ -126,7 +126,7 @@ function initDatabase(db) {
       base_form          TEXT,
       first_letter_hint  TEXT,
       usage_note         TEXT,
-      inflections_json   TEXT    NOT NULL DEFAULT '{}' CHECK(json_valid(inflections_json))
+      inflections_json   TEXT    NOT NULL DEFAULT '{}' CHECK(json_valid(inflections_json) AND json_type(inflections_json) = 'object')
     );
 
     CREATE TABLE IF NOT EXISTS phrase_choice_questions (
@@ -144,7 +144,7 @@ function initDatabase(db) {
     CREATE TABLE IF NOT EXISTS sentence_order_details (
       item_id          INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
       answer_sentence  TEXT    NOT NULL,
-      tokens_json      TEXT    NOT NULL DEFAULT '[]' CHECK(json_valid(tokens_json)),
+      tokens_json      TEXT    NOT NULL DEFAULT '[]' CHECK(json_valid(tokens_json) AND json_type(tokens_json) = 'array'),
       hint_text        TEXT
     );
 
