@@ -4,6 +4,7 @@ const path = require('path');
 const projectRoot = path.join(__dirname, '..');
 
 const filesWithUserFacingText = [
+  'data/question-types.js',
   'middleware/auth.js',
   'routes/auth.js',
   'routes/admin.js',
@@ -18,6 +19,7 @@ const filesWithUserFacingText = [
   'views/admin/items.ejs',
   'views/admin/item-edit.ejs',
   'views/admin/review-plan.ejs',
+  'views/admin/question-types.ejs',
   'views/admin/settings.ejs',
   'views/practice/dashboard.ejs',
   'views/practice/exercise.ejs',
@@ -42,7 +44,7 @@ const corruptedFragments = [
 ];
 
 const expectedText = {
-  'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '学生端预览', '系统设置', '开始复习', '学习统计', '退出'],
+  'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '题型设置', '学生端预览', '系统设置', '开始复习', '学习统计', '退出'],
   'views/login.ejs': ['登录', '用户名', '密码', '还没有账号？', '立即注册'],
   'views/register.ejs': ['注册', '用户名', '密码', '已有账号？', '立即登录'],
   'views/practice/dashboard.ejs': ['复习主页', '今日进度', '今日复习', '新内容', '复习内容', '开始今日复习', '暂无复习计划', '周期复习提醒'],
@@ -54,6 +56,8 @@ const expectedText = {
   'views/admin/items.ejs': ['添加条目', '批量导入', '英文', '中文释义'],
   'views/admin/item-edit.ejs': ['编辑条目', '保存', '取消'],
   'views/admin/review-plan.ejs': ['复习计划', '当前启用计划', '启用此复习计划', '每日配额'],
+  'data/question-types.js': ['单词词汇类', '短语固定搭配类', '语法专项类', '句子句型类', '完形填空类', '阅读理解类'],
+  'views/admin/question-types.ejs': ['题型设置', '题型生成规则', '可用于练习', '后续支持', '保存题型设置'],
   'views/admin/settings.ejs': ['系统设置', '每日复习配额', '复习周期规则'],
 };
 
