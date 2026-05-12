@@ -528,7 +528,7 @@ function normalizeQuestionTypeRow(row) {
   return {
     ...row,
     enabled: row.enabled === 1,
-    supported_item_types: JSON.parse(row.supported_item_types || '[]'),
+    supported_item_types: parseJsonOrDefault(row.supported_item_types, []),
     display_options: safeParseDisplayOptions(row.display_options),
   };
 }
@@ -561,7 +561,10 @@ function getQuestionTypeGroups(db) {
 }
 
 function validateQuestionTypeWeight(weight) {
-  const parsed = Number.parseInt(weight, 10);
+  const raw = typeof weight === 'number' ? weight : String(weight).trim();
+  const parsed = typeof raw === 'number'
+    ? raw
+    : (/^[+-]?\d+$/.test(raw) ? Number(raw) : Number.NaN);
   if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
     throw new Error('题型比例必须是 0 到 100 的整数');
   }
