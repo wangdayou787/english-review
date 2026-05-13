@@ -90,13 +90,13 @@ function seedWordWrongItem(db, userId) {
 }
 
 function seedPhraseChoiceWrongItem(db, userId) {
-  const textbookId = queries.createTextbook(db, '閿欓璇炬湰');
+  const textbookId = queries.createTextbook(db, '错题测试课本');
   const unitId = queries.createUnit(db, textbookId, 'Unit 1');
   const phraseId = queries.createItem(db, {
     unitId,
     type: 'phrase',
     english: 'look after',
-    chinese: '鐓ч【',
+    chinese: '照顾',
   });
   queries.savePhraseChoiceQuestion(db, {
     itemId: phraseId,
