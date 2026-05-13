@@ -1,7 +1,7 @@
 <h1><%= title %></h1>
 <p class="text-muted mb-1">
-  共 <%= totalItems %> 题
-  <% if (totalPages > 1) { %>(第 <%= page %> / <%= totalPages %> 页)<% } %>
+  Total <%= totalItems %> items
+  <% if (totalPages > 1) { %>(Page <%= page %> / <%= totalPages %>)<% } %>
 </p>
 
 <form id="exercise-form" method="POST" action="/practice/submit">
@@ -12,12 +12,16 @@
   <% exercises.forEach((ex, idx) => { %>
     <article class="exercise-card">
       <div class="exercise-meta">
-        <strong>第 <%= idx + 1 %> 题</strong>
+        <strong>Question <%= idx + 1 %></strong>
         <span class="text-muted">
-          <% if (ex.exercise_type === 'en2cn') { %>📖 英译中
-          <% } else if (ex.exercise_type === 'cn2en') { %>✏️ 中译英
-          <% } else if (ex.exercise_type === 'listening') { %>🔊 听音辨义
-          <% } else if (ex.exercise_type === 'sentence') { %>🧩 连词成句
+          <% if (ex.exercise_type === 'en2cn') { %>English to Chinese
+          <% } else if (ex.exercise_type === 'cn2en') { %>Chinese to English
+          <% } else if (ex.exercise_type === 'listening') { %>Listening Choice
+          <% } else if (ex.exercise_type === 'sentence') { %>Sentence Ordering
+          <% } else if (ex.exercise_type === 'spelling_fill') { %>Spelling Fill
+          <% } else if (ex.exercise_type === 'form_fill') { %>Form Transform
+          <% } else if (ex.exercise_type === 'phrase_choice') { %>Phrase Choice
+          <% } else if (ex.exercise_type === 'sentence_plus') { %>Sentence Ordering Plus
           <% } %>
         </span>
       </div>
@@ -28,24 +32,35 @@
 
       <div class="exercise-question"><%= ex.question %></div>
 
-      <% if (ex.exercise_type === 'listening') { %>
-        <button type="button" class="btn btn-sm mb-1 js-speak" data-question="<%= ex.question %>"><%= ex.primary_action_text || '播放发音' %></button>
+      <% if (ex.exercise_type === 'spelling_fill' && ex.first_letter_hint) { %>
+        <p class="text-muted">First letter: <%= ex.first_letter_hint %></p>
       <% } %>
 
-      <!-- Hidden fields -->
+      <% if (ex.exercise_type === 'form_fill' && ex.prompt_label) { %>
+        <p class="text-muted">Target form: <%= ex.prompt_label %></p>
+      <% } %>
+
+      <% if (ex.exercise_type === 'listening') { %>
+        <button type="button" class="btn btn-sm mb-1 js-speak" data-question="<%= ex.question %>"><%= ex.primary_action_text || 'Play audio' %></button>
+      <% } %>
+
       <input type="hidden" name="answers[<%= idx %>][item_id]" value="<%= ex.item_id %>">
       <input type="hidden" name="answers[<%= idx %>][exercise_type]" value="<%= ex.exercise_type %>">
+      <% if (ex.correct_answer) { %>
+        <input type="hidden" name="answers[<%= idx %>][correct_answer]" value="<%= ex.correct_answer %>">
+      <% } %>
+      <% if (ex.explanation) { %>
+        <input type="hidden" name="answers[<%= idx %>][explanation]" value="<%= ex.explanation %>">
+      <% } %>
 
       <% if (ex.options) { %>
-        <!-- Multiple choice -->
         <% ex.options.forEach((opt, oi) => { %>
           <label class="choice-option">
             <input type="radio" name="answers[<%= idx %>][answer]" value="<%= opt %>" required>
             <span><%= String.fromCharCode(65 + oi) %>. <%= opt %></span>
           </label>
         <% }) %>
-      <% } else if (ex.words) { %>
-        <!-- Sentence ordering -->
+      <% } else if (ex.words && (ex.exercise_type === 'sentence' || ex.exercise_type === 'sentence_plus')) { %>
         <div id="sentence-<%= idx %>" class="sentence-order">
           <% ex.words.forEach(w => { %>
             <span class="word-chip" onclick="selectWord(this, <%= idx %>)"><%= w %></span>
@@ -54,8 +69,7 @@
         <div id="sentence-result-<%= idx %>" class="sentence-result"></div>
         <input type="hidden" name="answers[<%= idx %>][answer]" id="sentence-input-<%= idx %>">
       <% } else { %>
-        <!-- Text input -->
-        <input type="text" class="answer-input" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required>
+        <input type="text" class="answer-input" name="answers[<%= idx %>][answer]" placeholder="Enter your answer" required>
       <% } %>
 
       <% if (ex.hint_text) { %>
@@ -66,11 +80,11 @@
 
   <div class="form-actions">
     <% if (page < totalPages) { %>
-      <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn">下一页</a>
+      <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn">Next Page</a>
     <% } else { %>
       <span></span>
     <% } %>
-    <button type="submit" class="primary-action">提交答案</button>
+    <button type="submit" class="primary-action">Submit Answers</button>
   </div>
 </form>
 
