@@ -174,11 +174,11 @@ describe('wrong answer routes', () => {
     const res = await requestApp(app, 'GET', `/wrong-items/${phraseId}`);
 
     expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('閿欓璇︽儏');
+    expect(res.text).toContain('错题详情');
     expect(res.text).toContain('look after');
     expect(res.text).toContain('look up');
     expect(res.text).toContain('look after means take care of someone.');
-    expect(res.text).toContain('鏈€杩戜綔绛旇褰?');
+    expect(res.text).toContain('最近作答记录');
     app.cleanup();
   });
 

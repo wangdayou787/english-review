@@ -116,7 +116,7 @@ router.get('/wrong-items/:itemId', (req, res) => {
     wrongItem,
     answerMetadata,
     history,
-  }, '閿欓璇︽儏');
+  }, '错题详情');
 });
 
 router.get('/practice/wrong', (req, res) => {

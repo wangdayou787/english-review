@@ -1,64 +1,64 @@
-<h1>閿欓璇︽儏</h1>
+<h1>错题详情</h1>
 
 <p class="mb-2">
-  <a href="/wrong-items" class="btn">杩斿洖閿欓鏈?</a>
-  <a href="/practice/wrong" class="btn btn-primary">寮€濮嬮敊棰樹笓椤瑰涔?</a>
+  <a href="/wrong-items" class="btn">返回错题本</a>
+  <a href="/practice/wrong" class="btn btn-primary">开始错题专项复习</a>
 </p>
 
 <section class="panel mb-2">
   <div class="flex-between">
     <div>
       <span class="status-pill status-planned">
-        <%= wrongItem.type === 'word' ? '鍗曡瘝' : wrongItem.type === 'phrase' ? '鐭' : '璇硶' %>
+        <%= wrongItem.type === 'word' ? '单词' : wrongItem.type === 'phrase' ? '短语' : '语法' %>
       </span>
       <h2 class="mt-2"><%= wrongItem.english || wrongItem.chinese || '-' %></h2>
       <p class="text-muted"><%= wrongItem.chinese && wrongItem.english ? wrongItem.chinese : (wrongItem.english || '-') %></p>
       <% if (wrongItem.pos) { %>
-        <p class="text-muted">璇嶆€э細<%= wrongItem.pos %></p>
+        <p class="text-muted">词性：<%= wrongItem.pos %></p>
       <% } %>
       <% if (wrongItem.example) { %>
-        <p class="text-muted">渚嬪彞: <%= wrongItem.example %></p>
+        <p class="text-muted">例句：<%= wrongItem.example %></p>
       <% } %>
     </div>
     <div class="wrong-item-meta">
       <strong><%= wrongItem.wrong_count %></strong>
-      <span>閿欒娆℃暟</span>
+      <span>错误次数</span>
     </div>
   </div>
 </section>
 
 <section class="panel mb-2">
-  <h2 class="mb-1">鏈€杩戦敊璇?</h2>
-  <p>浣犵殑绛旀: <strong><%= wrongItem.last_user_answer || '-' %></strong></p>
-  <p>棰樺瀷: <%= wrongItem.last_exercise_type || '-' %></p>
-  <p class="text-muted">鏃堕棿: <%= wrongItem.last_wrong_at || '-' %></p>
+  <h2 class="mb-1">最近错误</h2>
+  <p>你的答案：<strong><%= wrongItem.last_user_answer || '-' %></strong></p>
+  <p>题型：<%= wrongItem.last_exercise_type || '-' %></p>
+  <p class="text-muted">时间：<%= wrongItem.last_wrong_at || '-' %></p>
 </section>
 
 <section class="panel mb-2">
-  <h2 class="mb-1">姝ｇ‘绛旀</h2>
+  <h2 class="mb-1">正确答案</h2>
   <% if (answerMetadata && answerMetadata.correct_answer) { %>
     <p><strong><%= answerMetadata.correct_answer %></strong></p>
   <% } else { %>
-    <p class="text-muted">鏆傛棤鍙樉绀虹殑姝ｇ‘绛旀銆?</p>
+    <p class="text-muted">暂无可显示的正确答案。</p>
   <% } %>
   <% if (answerMetadata && answerMetadata.explanation) { %>
-    <h3>瑙ｆ瀽</h3>
+    <h3>解析</h3>
     <p class="text-muted"><%= answerMetadata.explanation %></p>
   <% } %>
 </section>
 
 <section class="panel">
-  <h2 class="mb-1">鏈€杩戜綔绛旇褰?</h2>
+  <h2 class="mb-1">最近作答记录</h2>
   <% if (history.length === 0) { %>
-    <p class="text-muted">鏆傛棤浣滅瓟璁板綍銆?</p>
+    <p class="text-muted">暂无作答记录。</p>
   <% } else { %>
     <table>
       <thead>
         <tr>
-          <th>鏃堕棿</th>
-          <th>棰樺瀷</th>
-          <th>浣犵殑绛旀</th>
-          <th>缁撴灉</th>
+          <th>时间</th>
+          <th>题型</th>
+          <th>你的答案</th>
+          <th>结果</th>
         </tr>
       </thead>
       <tbody>
@@ -69,7 +69,7 @@
             <td><%= record.user_answer || '-' %></td>
             <td>
               <span class="status-pill <%= record.is_correct ? 'status-available' : 'status-planned' %>">
-                <%= record.is_correct ? '姝ｇ‘' : '閿欒' %>
+                <%= record.is_correct ? '正确' : '错误' %>
               </span>
             </td>
           </tr>
