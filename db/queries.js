@@ -298,6 +298,102 @@ function getAllItemsByType(db, type) {
   return db.prepare('SELECT * FROM items WHERE type = ? ORDER BY id').all(type);
 }
 
+function normalizeWrongItemType(type) {
+  return ['word', 'phrase', 'grammar'].includes(type) ? type : null;
+}
+
+function normalizePositiveLimit(limit) {
+  const parsed = Number(limit);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getWrongItemsForUser(db, userId, options = {}) {
+  const type = normalizeWrongItemType(options.type);
+  const limit = normalizePositiveLimit(options.limit);
+  const params = [userId, userId];
+  const typeClause = type ? 'AND items.type = ?' : '';
+  if (type) params.push(type);
+
+  const limitClause = limit ? 'LIMIT ?' : '';
+  if (limit) params.push(limit);
+
+  return db.prepare(
+    `WITH latest_records AS (
+       SELECT review_records.*
+       FROM review_records
+       JOIN (
+         SELECT item_id, MAX(id) AS latest_id
+         FROM review_records
+         WHERE user_id = ?
+         GROUP BY item_id
+       ) latest ON latest.latest_id = review_records.id
+     ),
+     wrong_counts AS (
+       SELECT item_id, COUNT(*) AS wrong_count
+       FROM review_records
+       WHERE user_id = ? AND is_correct = 0
+       GROUP BY item_id
+     )
+     SELECT
+       items.id AS item_id,
+       items.type,
+       items.english,
+       items.chinese,
+       items.pos,
+       items.example,
+       wrong_counts.wrong_count,
+       latest_records.created_at AS last_wrong_at,
+       latest_records.user_answer AS last_user_answer,
+       latest_records.exercise_type AS last_exercise_type
+     FROM latest_records
+     JOIN items ON items.id = latest_records.item_id
+     JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
+     LEFT JOIN item_mastery
+       ON item_mastery.user_id = latest_records.user_id
+      AND item_mastery.item_id = latest_records.item_id
+      AND item_mastery.known = 1
+     WHERE latest_records.is_correct = 0
+       AND item_mastery.item_id IS NULL
+       ${typeClause}
+     ORDER BY latest_records.created_at DESC, latest_records.id DESC
+     ${limitClause}`
+  ).all(...params);
+}
+
+function getWrongItemCountsForUser(db, userId) {
+  const rows = db.prepare(
+    `WITH latest_records AS (
+       SELECT review_records.*
+       FROM review_records
+       JOIN (
+         SELECT item_id, MAX(id) AS latest_id
+         FROM review_records
+         WHERE user_id = ?
+         GROUP BY item_id
+       ) latest ON latest.latest_id = review_records.id
+     )
+     SELECT items.type, COUNT(*) AS count
+     FROM latest_records
+     JOIN items ON items.id = latest_records.item_id
+     LEFT JOIN item_mastery
+       ON item_mastery.user_id = latest_records.user_id
+      AND item_mastery.item_id = latest_records.item_id
+      AND item_mastery.known = 1
+     WHERE latest_records.is_correct = 0
+       AND item_mastery.item_id IS NULL
+     GROUP BY items.type`
+  ).all(userId);
+
+  const counts = { all: 0, word: 0, phrase: 0, grammar: 0 };
+  for (const row of rows) {
+    if (Object.prototype.hasOwnProperty.call(counts, row.type)) {
+      counts[row.type] = row.count;
+      counts.all += row.count;
+    }
+  }
+  return counts;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Review Plans
 // ═══════════════════════════════════════════════════════════════
@@ -675,6 +771,8 @@ module.exports = {
   setItemKnown,
   getKnownItemIds,
   getAllItemsByType,
+  getWrongItemsForUser,
+  getWrongItemCountsForUser,
   getActiveReviewPlan,
   activateReviewPlan,
   getItemsForPlan,
