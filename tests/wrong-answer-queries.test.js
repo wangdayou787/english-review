@@ -107,4 +107,54 @@ describe('wrong answer query helpers', () => {
     expect(queries.getWrongItemCountsForUser(db, userId).all).toBe(0);
     db.close();
   });
+
+  test('returns current wrong item detail for one user and item', () => {
+    const { db, userId, wordId } = setupDb();
+    record(db, userId, wordId, false, 'wrong detail answer');
+
+    const detail = queries.getWrongItemDetailForUser(db, userId, wordId);
+
+    expect(detail.item_id).toBe(wordId);
+    expect(detail.type).toBe('word');
+    expect(detail.english).toBe('study');
+    expect(detail.wrong_count).toBe(1);
+    expect(detail.last_user_answer).toBe('wrong detail answer');
+    expect(detail.last_exercise_type).toBe('en2cn');
+    db.close();
+  });
+
+  test('wrong item detail returns null after a later correct answer', () => {
+    const { db, userId, wordId } = setupDb();
+    record(db, userId, wordId, false, 'wrong');
+    record(db, userId, wordId, true, '瀛︿範');
+
+    expect(queries.getWrongItemDetailForUser(db, userId, wordId)).toBeNull();
+    db.close();
+  });
+
+  test('wrong item detail is scoped to the current user', () => {
+    const { db, wordId } = setupDb();
+    db.prepare("INSERT INTO users (id, username, password, role) VALUES (3, 'other', 'hash', 'user')").run();
+    record(db, 3, wordId, false, 'other wrong answer');
+
+    expect(queries.getWrongItemDetailForUser(db, 2, wordId)).toBeNull();
+    db.close();
+  });
+
+  test('review history returns recent records for only one user and item', () => {
+    const { db, userId, wordId, phraseId } = setupDb();
+    db.prepare("INSERT INTO users (id, username, password, role) VALUES (3, 'other', 'hash', 'user')").run();
+    record(db, userId, wordId, false, 'first wrong');
+    record(db, userId, wordId, true, '瀛︿範');
+    record(db, userId, phraseId, false, 'wrong phrase');
+    record(db, 3, wordId, false, 'other user answer');
+
+    const history = queries.getReviewHistoryForUserItem(db, userId, wordId);
+
+    expect(history).toHaveLength(2);
+    expect(history.map(row => row.user_answer)).toEqual(['瀛︿範', 'first wrong']);
+    expect(history.every(row => row.item_id === wordId)).toBe(true);
+    expect(history.every(row => row.user_id === userId)).toBe(true);
+    db.close();
+  });
 });

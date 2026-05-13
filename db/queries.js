@@ -398,6 +398,65 @@ function getWrongItemCountsForUser(db, userId) {
 // Review Plans
 // ═══════════════════════════════════════════════════════════════
 
+function getWrongItemDetailForUser(db, userId, itemId) {
+  const parsedItemId = Number(itemId);
+  if (!Number.isInteger(parsedItemId) || parsedItemId <= 0) return null;
+
+  return db.prepare(
+    `WITH latest_records AS (
+       SELECT review_records.*
+       FROM review_records
+       JOIN (
+         SELECT item_id, MAX(id) AS latest_id
+         FROM review_records
+         WHERE user_id = ? AND item_id = ?
+         GROUP BY item_id
+       ) latest ON latest.latest_id = review_records.id
+     ),
+     wrong_counts AS (
+       SELECT item_id, COUNT(*) AS wrong_count
+       FROM review_records
+       WHERE user_id = ? AND item_id = ? AND is_correct = 0
+       GROUP BY item_id
+     )
+     SELECT
+       items.id AS item_id,
+       items.id AS id,
+       items.type,
+       items.english,
+       items.chinese,
+       items.pos,
+       items.example,
+       wrong_counts.wrong_count,
+       latest_records.created_at AS last_wrong_at,
+       latest_records.user_answer AS last_user_answer,
+       latest_records.exercise_type AS last_exercise_type
+     FROM latest_records
+     JOIN items ON items.id = latest_records.item_id
+     JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
+     LEFT JOIN item_mastery
+       ON item_mastery.user_id = latest_records.user_id
+      AND item_mastery.item_id = latest_records.item_id
+      AND item_mastery.known = 1
+     WHERE latest_records.is_correct = 0
+       AND item_mastery.item_id IS NULL`
+  ).get(userId, parsedItemId, userId, parsedItemId) || null;
+}
+
+function getReviewHistoryForUserItem(db, userId, itemId, options = {}) {
+  const parsedItemId = Number(itemId);
+  if (!Number.isInteger(parsedItemId) || parsedItemId <= 0) return [];
+
+  const limit = normalizePositiveLimit(options.limit) || 10;
+  return db.prepare(
+    `SELECT id, user_id, item_id, exercise_type, user_answer, is_correct, created_at
+     FROM review_records
+     WHERE user_id = ? AND item_id = ?
+     ORDER BY id DESC
+     LIMIT ?`
+  ).all(userId, parsedItemId, limit);
+}
+
 function getActiveReviewPlan(db) {
   const plan = db.prepare('SELECT * FROM review_plans WHERE is_active = 1 ORDER BY id DESC LIMIT 1').get();
   if (!plan) return null;
@@ -773,6 +832,8 @@ module.exports = {
   getAllItemsByType,
   getWrongItemsForUser,
   getWrongItemCountsForUser,
+  getWrongItemDetailForUser,
+  getReviewHistoryForUserItem,
   getActiveReviewPlan,
   activateReviewPlan,
   getItemsForPlan,
