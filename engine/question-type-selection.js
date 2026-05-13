@@ -111,7 +111,10 @@ function isConfiguredTypeUsable(questionType, item, support) {
     case 'phrase_choice':
       return Array.isArray(support.phraseQuestions) && support.phraseQuestions.length > 0;
     case 'sentence_ordering':
-      return true;
+      return !!(support.sentenceOrder &&
+        String(support.sentenceOrder.answer_sentence || '').trim() &&
+        Array.isArray(support.sentenceOrder.tokens) &&
+        support.sentenceOrder.tokens.filter(Boolean).length > 0);
     default:
       return true;
   }

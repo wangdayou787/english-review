@@ -223,6 +223,15 @@ describe('configured question type generation', () => {
         displayOptions: {},
       },
       {
+        code: 'vocab_spelling_fill',
+        enabled: false,
+        weight: 0,
+        instructionText: '',
+        primaryActionText: '',
+        hintText: '',
+        displayOptions: {},
+      },
+      {
         code: 'vocab_listening_choice',
         enabled: false,
         weight: 0,
@@ -339,6 +348,34 @@ describe('configured question type generation', () => {
     expect(exercise.correct_answer).toBe('She likes music');
     expect(exercise.words).toEqual(expect.arrayContaining(['She', 'likes', 'music']));
     expect(exercise.words).toHaveLength(3);
+    db.close();
+  });
+
+  test('falls back when enhanced sentence ordering has tokens but no answer sentence', () => {
+    const { db, grammarId } = buildDb();
+    queries.updateQuestionTypeSettings(db, [
+      {
+        code: 'sentence_ordering',
+        enabled: true,
+        weight: 100,
+        instructionText: 'Build the sentence.',
+        primaryActionText: 'Submit',
+        hintText: 'Use all tokens.',
+        displayOptions: {},
+      },
+    ]);
+    queries.saveSentenceOrderDetails(db, grammarId, {
+      answerSentence: '',
+      tokens: ['She', 'likes', 'music'],
+      hintText: 'Start with the subject.',
+    });
+
+    const item = queries.getItemById(db, grammarId);
+    const exercise = generator.generateExercises([item], db, { random: () => 0 })[0];
+
+    expect(exercise.question_type_code).toBeUndefined();
+    expect(exercise.exercise_type).toBe('sentence');
+    expect(exercise.correct_answer).toBe('She likes music');
     db.close();
   });
 });

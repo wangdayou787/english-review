@@ -3,18 +3,13 @@ const router = express.Router();
 const queries = require('../db/queries');
 const { requireAdmin } = require('../middleware/auth');
 const { normalizeExampleText } = require('../lib/item-examples');
-const WORD_INFLECTION_FIELDS = [
-  'plural',
-  'third_person_singular',
-  'past_tense',
-  'past_participle',
-  'present_participle',
-  'comparative',
-  'superlative',
-  'adverb',
-  'adjective',
-  'noun',
-];
+const {
+  clearSupportData,
+  getDraftSupportViewData,
+  getItemSupportViewData,
+  getPhraseChoiceQuestionForItem,
+  saveSupportData,
+} = require('../services/admin-item-support');
 
 // Reuse renderWithLayout helper
 function renderWithLayout(res, view, data, title) {
@@ -103,63 +98,6 @@ function normalizeQuestionTypeSettings(rawSettings) {
       showFirstLetterHint: setting.showFirstLetterHint === 'on',
     },
   }));
-}
-
-function normalizeWordQuestionDetails(raw) {
-  return {
-    baseForm: raw?.base_form || '',
-    firstLetterHint: raw?.first_letter_hint || '',
-    usageNote: raw?.usage_note || '',
-    inflections: WORD_INFLECTION_FIELDS.reduce((all, key) => {
-      all[key] = raw?.[key] || '';
-      return all;
-    }, {}),
-  };
-}
-
-function normalizePhraseChoiceRows(rawRows) {
-  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
-  return rows.map((row) => ({
-    id: row?.id ? parseInt(row.id, 10) : null,
-    promptSentence: String(row?.prompt_sentence || '').trim(),
-    correctPhrase: String(row?.correct_phrase || '').trim(),
-    distractorA: String(row?.distractor_a || '').trim(),
-    distractorB: String(row?.distractor_b || '').trim(),
-    distractorC: String(row?.distractor_c || '').trim(),
-    explanation: String(row?.explanation || '').trim(),
-  }));
-}
-
-function normalizeSentenceTokens(tokensText, answerSentence) {
-  const source = String(tokensText || answerSentence || '').trim();
-  return source ? source.split(/\s+/) : [];
-}
-
-function draftPhraseChoiceRows(rawRows) {
-  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
-  return rows.map((row) => ({
-    id: row?.id || '',
-    prompt_sentence: String(row?.prompt_sentence || ''),
-    correct_phrase: String(row?.correct_phrase || ''),
-    distractor_a: String(row?.distractor_a || ''),
-    distractor_b: String(row?.distractor_b || ''),
-    distractor_c: String(row?.distractor_c || ''),
-    explanation: String(row?.explanation || ''),
-  }));
-}
-
-function draftSentenceOrderDetail(raw) {
-  return {
-    answer_sentence: String(raw?.answer_sentence || ''),
-    tokens: normalizeSentenceTokens(raw?.tokens_text, raw?.answer_sentence),
-    hint_text: String(raw?.hint_text || ''),
-  };
-}
-
-function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
-  return db.prepare(
-    'SELECT * FROM phrase_choice_questions WHERE id = ? AND item_id = ?'
-  ).get(questionId, itemId);
 }
 
 router.post('/admin/question-types', (req, res) => {
@@ -281,16 +219,11 @@ router.get('/admin/items/:id/edit', (req, res) => {
   if (!item) return res.redirect('/admin/textbooks');
   const unit = queries.getUnitById(db, item.unit_id);
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
-  const wordQuestionDetail = queries.getWordQuestionDetails(db, item.id);
-  const phraseChoiceQuestions = queries.getPhraseChoiceQuestionsByItem(db, item.id);
-  const sentenceOrderDetail = queries.getSentenceOrderDetails(db, item.id);
   renderWithLayout(res, 'admin/item-edit', {
     textbook,
     unit,
     item,
-    wordQuestionDetail,
-    phraseChoiceQuestions,
-    sentenceOrderDetail,
+    ...getItemSupportViewData(db, item.id),
     error: null,
   }, '编辑条目');
 });
@@ -317,28 +250,13 @@ router.post('/admin/items/:id/edit', (req, res) => {
         pos: normalizedPos,
         example: normalizeExampleText(type, example, examples),
       },
-      wordQuestionDetail: req.body.word_detail
-        ? {
-            base_form: req.body.word_detail.base_form || '',
-            first_letter_hint: req.body.word_detail.first_letter_hint || '',
-            usage_note: req.body.word_detail.usage_note || '',
-            inflections: normalizeWordQuestionDetails(req.body.word_detail).inflections,
-          }
-        : queries.getWordQuestionDetails(db, item.id),
-      phraseChoiceQuestions: req.body.phrase_choice
-        ? draftPhraseChoiceRows(req.body.phrase_choice)
-        : queries.getPhraseChoiceQuestionsByItem(db, item.id),
-      sentenceOrderDetail: req.body.sentence_order
-        ? draftSentenceOrderDetail(req.body.sentence_order)
-        : queries.getSentenceOrderDetails(db, item.id),
+      ...getDraftSupportViewData(db, item.id, req.body),
       error: '英文和中文不能为空',
     }, '编辑条目');
   }
 
   if (type !== item.type) {
-    db.prepare('DELETE FROM word_question_details WHERE item_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM sentence_order_details WHERE item_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM phrase_choice_questions WHERE item_id = ?').run(req.params.id);
+    clearSupportData(db, req.params.id);
   }
 
   queries.updateItem(db, req.params.id, {
@@ -349,37 +267,7 @@ router.post('/admin/items/:id/edit', (req, res) => {
     example: normalizeExampleText(type, example, examples),
   });
 
-  if (type === 'word' && req.body.word_detail) {
-    queries.saveWordQuestionDetails(db, req.params.id, normalizeWordQuestionDetails(req.body.word_detail));
-  }
-  if (type === 'phrase' && req.body.phrase_choice) {
-    for (const row of normalizePhraseChoiceRows(req.body.phrase_choice)) {
-      const isComplete = row.promptSentence &&
-        row.correctPhrase &&
-        row.distractorA &&
-        row.distractorB &&
-        row.distractorC;
-      if (row.id) {
-        if (getPhraseChoiceQuestionForItem(db, req.params.id, row.id)) {
-          if (isComplete) {
-            queries.updatePhraseChoiceQuestion(db, row.id, row);
-          } else {
-            queries.deletePhraseChoiceQuestion(db, row.id);
-          }
-        }
-      } else if (isComplete) {
-        queries.savePhraseChoiceQuestion(db, { itemId: req.params.id, ...row });
-      }
-    }
-  }
-  if (type === 'grammar' && req.body.sentence_order) {
-    const sentenceOrder = req.body.sentence_order || {};
-    queries.saveSentenceOrderDetails(db, req.params.id, {
-      answerSentence: String(sentenceOrder.answer_sentence || '').trim(),
-      tokens: normalizeSentenceTokens(sentenceOrder.tokens_text, sentenceOrder.answer_sentence),
-      hintText: String(sentenceOrder.hint_text || '').trim(),
-    });
-  }
+  saveSupportData(db, req.params.id, type, req.body);
   res.redirect(`/admin/units/${item.unit_id}/items`);
 });
 

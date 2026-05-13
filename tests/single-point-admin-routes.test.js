@@ -354,6 +354,27 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('admin edit does not save incomplete sentence order details', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'grammar');
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'grammar',
+      english: 'She likes music',
+      chinese: '她喜欢音乐',
+      pos: '',
+      example: '',
+      'sentence_order[answer_sentence]': '',
+      'sentence_order[tokens_text]': 'She likes music',
+      'sentence_order[hint_text]': '先找主语。',
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(queries.getSentenceOrderDetails(app.locals.db, itemId)).toBeNull();
+
+    app.cleanup();
+  });
+
   test('word and phrase edits reject blank or whitespace-only core english/chinese fields', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId: wordItemId } = seedItem(app.locals.db, 'word');

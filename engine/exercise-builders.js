@@ -129,14 +129,15 @@ function createExercise(item, exerciseType, db, template = {}, support = null) {
     }
     case 'sentence_plus': {
       const detail = singlePointSupport.sentenceOrder;
-      if (!detail || !Array.isArray(detail.tokens) || detail.tokens.length === 0) {
+      const tokens = Array.isArray(detail?.tokens) ? detail.tokens.filter(Boolean) : [];
+      if (!detail || !String(detail.answer_sentence || '').trim() || tokens.length === 0) {
         return createExercise(item, 'sentence', db, {}, singlePointSupport);
       }
       return {
         ...base,
         question: item.chinese || item.english,
         correct_answer: detail.answer_sentence,
-        words: shuffle(detail.tokens.filter(Boolean)),
+        words: shuffle(tokens),
         hint_text: detail.hint_text || base.hint_text,
       };
     }
