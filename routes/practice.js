@@ -91,7 +91,7 @@ router.get('/practice/wrong', (req, res) => {
   const wrongItems = queries.getWrongItemsForUser(db, userId, { type: queryType, limit: 20 });
 
   if (wrongItems.length === 0) {
-    return res.redirect('/wrong-items');
+    return res.redirect(buildWrongFilterHref(activeType));
   }
 
   const items = wrongItems.map(item => ({ ...item, id: item.item_id }));

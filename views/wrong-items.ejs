@@ -6,7 +6,7 @@
       <h2 class="mb-1">当前错题</h2>
       <p class="text-muted">共有 <%= counts.all %> 个当前错题。答对后会自动移出错题本。</p>
     </div>
-    <% if (counts.all > 0) { %>
+    <% if (wrongItems.length > 0) { %>
       <a class="primary-action" href="/practice/wrong<%= activeType !== 'all' ? '?type=' + activeType : '' %>">开始错题专项复习</a>
     <% } %>
   </div>

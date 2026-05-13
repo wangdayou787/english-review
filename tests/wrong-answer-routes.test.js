@@ -78,6 +78,17 @@ function seedWrongItems(db, userId) {
   return { wordId, phraseId };
 }
 
+function seedWordWrongItem(db, userId) {
+  const textbookId = queries.createTextbook(db, '错题课本');
+  const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+  const wordId = queries.createItem(db, { unitId, type: 'word', english: 'study', chinese: '学习' });
+  db.prepare(
+    `INSERT INTO review_records (user_id, item_id, exercise_type, user_answer, is_correct)
+     VALUES (?, ?, 'en2cn', '错误答案', 0)`
+  ).run(userId, wordId);
+  return { wordId };
+}
+
 describe('wrong answer routes', () => {
   test('student can open wrong-answer notebook with current wrong items', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
@@ -105,6 +116,19 @@ describe('wrong answer routes', () => {
     app.cleanup();
   });
 
+  test('wrong-answer notebook does not show filtered practice action for empty filters', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedWordWrongItem(app.locals.db, 2);
+
+    const res = await requestApp(app, 'GET', '/wrong-items?type=grammar');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('暂无错题');
+    expect(res.text).not.toContain('href="/practice/wrong?type=grammar"');
+    expect(res.text).not.toContain('开始错题专项复习');
+    app.cleanup();
+  });
+
   test('wrong-answer practice renders exercises from current wrong items', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     seedWrongItems(app.locals.db, 2);
@@ -115,6 +139,17 @@ describe('wrong answer routes', () => {
     expect(res.text).toContain('错题专项复习');
     expect(res.text).toContain('study');
     expect(res.text).toContain('answers[0][item_id]');
+    app.cleanup();
+  });
+
+  test('wrong-answer practice preserves active filter when redirecting with no filtered items', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedWordWrongItem(app.locals.db, 2);
+
+    const res = await requestApp(app, 'GET', '/practice/wrong?type=grammar');
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/wrong-items?type=grammar');
     app.cleanup();
   });
 
