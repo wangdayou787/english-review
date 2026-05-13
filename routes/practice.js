@@ -12,6 +12,14 @@ function renderWithLayout(res, view, data, title) {
   });
 }
 
+function normalizeWrongFilter(value) {
+  return ['word', 'phrase', 'grammar'].includes(value) ? value : 'all';
+}
+
+function buildWrongFilterHref(type) {
+  return type === 'all' ? '/wrong-items' : `/wrong-items?type=${type}`;
+}
+
 router.use(requireAuth);
 
 // ── Dashboard ────────────────────────────────────────────────────
@@ -51,6 +59,51 @@ router.get('/practice', (req, res) => {
     planCounts,
     taskSummary,
   }, '复习主页');
+});
+
+router.get('/wrong-items', (req, res) => {
+  const db = req.app.locals.db;
+  const userId = req.session.user.id;
+  const activeType = normalizeWrongFilter(req.query.type);
+  const queryType = activeType === 'all' ? null : activeType;
+  const wrongItems = queries.getWrongItemsForUser(db, userId, { type: queryType });
+  const counts = queries.getWrongItemCountsForUser(db, userId);
+  const filters = [
+    { type: 'all', label: '全部', count: counts.all, href: buildWrongFilterHref('all') },
+    { type: 'word', label: '单词', count: counts.word, href: buildWrongFilterHref('word') },
+    { type: 'phrase', label: '短语', count: counts.phrase, href: buildWrongFilterHref('phrase') },
+    { type: 'grammar', label: '语法', count: counts.grammar, href: buildWrongFilterHref('grammar') },
+  ];
+
+  renderWithLayout(res, 'wrong-items', {
+    wrongItems,
+    counts,
+    filters,
+    activeType,
+  }, '错题本');
+});
+
+router.get('/practice/wrong', (req, res) => {
+  const db = req.app.locals.db;
+  const userId = req.session.user.id;
+  const activeType = normalizeWrongFilter(req.query.type);
+  const queryType = activeType === 'all' ? null : activeType;
+  const wrongItems = queries.getWrongItemsForUser(db, userId, { type: queryType, limit: 20 });
+
+  if (wrongItems.length === 0) {
+    return res.redirect('/wrong-items');
+  }
+
+  const items = wrongItems.map(item => ({ ...item, id: item.item_id }));
+  const exercises = generator.generateExercises(items, db);
+  renderWithLayout(res, 'practice/exercise', {
+    exercises,
+    title: '错题专项复习',
+    cycleType: null,
+    page: 1,
+    totalPages: 1,
+    totalItems: items.length,
+  }, '错题专项复习');
 });
 
 // ── Start exercise (daily or cycle) ──────────────────────────────

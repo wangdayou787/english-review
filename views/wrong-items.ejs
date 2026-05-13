@@ -1,0 +1,52 @@
+<h1>错题本</h1>
+
+<section class="panel mb-2">
+  <div class="flex-between">
+    <div>
+      <h2 class="mb-1">当前错题</h2>
+      <p class="text-muted">共有 <%= counts.all %> 个当前错题。答对后会自动移出错题本。</p>
+    </div>
+    <% if (counts.all > 0) { %>
+      <a class="primary-action" href="/practice/wrong<%= activeType !== 'all' ? '?type=' + activeType : '' %>">开始错题专项复习</a>
+    <% } %>
+  </div>
+</section>
+
+<nav class="filter-tabs mb-2" aria-label="错题筛选">
+  <% filters.forEach(filter => { %>
+    <a class="filter-tab <%= activeType === filter.type ? 'active' : '' %>" href="<%= filter.href %>">
+      <span><%= filter.label %></span>
+      <strong><%= filter.count %></strong>
+    </a>
+  <% }) %>
+</nav>
+
+<% if (wrongItems.length === 0) { %>
+  <section class="panel">
+    <h2>暂无错题</h2>
+    <p class="text-muted">当前筛选下没有需要专项复习的错题。</p>
+    <p class="mt-2"><a href="/practice" class="btn">返回复习主页</a></p>
+  </section>
+<% } else { %>
+  <div class="wrong-item-list">
+    <% wrongItems.forEach(item => { %>
+      <article class="wrong-item-row">
+        <div class="wrong-item-main">
+          <span class="status-pill status-planned">
+            <%= item.type === 'word' ? '单词' : item.type === 'phrase' ? '短语' : '语法' %>
+          </span>
+          <h2><%= item.english || item.chinese %></h2>
+          <p class="text-muted"><%= item.chinese && item.english ? item.chinese : (item.english || '-') %></p>
+        </div>
+        <div class="wrong-item-meta">
+          <strong><%= item.wrong_count %></strong>
+          <span>错误次数</span>
+        </div>
+        <div class="wrong-item-detail">
+          <div class="text-muted">最近答案：<%= item.last_user_answer || '空' %></div>
+          <div class="text-muted">最近错误：<%= item.last_wrong_at || '-' %></div>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+<% } %>
