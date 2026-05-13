@@ -135,8 +135,6 @@ router.post('/practice/submit', (req, res) => {
       item_id: parseInt(a.item_id),
       exercise_type: a.exercise_type,
       answer: a.answer || '',
-      correct_answer: a.correct_answer || '',
-      explanation: a.explanation || '',
     }));
   } else if (rawAnswers) {
     // Single answer case
@@ -144,8 +142,6 @@ router.post('/practice/submit', (req, res) => {
       item_id: parseInt(rawAnswers.item_id),
       exercise_type: rawAnswers.exercise_type,
       answer: rawAnswers.answer || '',
-      correct_answer: rawAnswers.correct_answer || '',
-      explanation: rawAnswers.explanation || '',
     }];
   }
 
@@ -156,7 +152,7 @@ router.post('/practice/submit', (req, res) => {
     ? db.prepare(`SELECT * FROM items WHERE id IN (${placeholders})`).all(...itemIds)
     : [];
 
-  const result = generator.scoreAnswers(items, answers);
+  const result = generator.scoreAnswers(items, answers, { db });
 
   // Write review records
   const insertRecord = db.prepare(

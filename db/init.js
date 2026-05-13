@@ -1,16 +1,6 @@
 const bcrypt = require('bcrypt');
 const { QUESTION_TYPES, serializeDisplayOptions } = require('../data/question-types');
-
-const REVIEW_RECORD_EXERCISE_TYPES = [
-  'en2cn',
-  'cn2en',
-  'listening',
-  'sentence',
-  'spelling_fill',
-  'form_fill',
-  'phrase_choice',
-  'sentence_plus',
-];
+const { REVIEW_RECORD_EXERCISE_TYPES } = require('../engine/exercise-types');
 
 function getReviewRecordExerciseTypeCheck() {
   return REVIEW_RECORD_EXERCISE_TYPES.map(type => `'${type}'`).join(', ');

@@ -5,7 +5,6 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const { initDatabase } = require('../db/init');
 const queries = require('../db/queries');
-const generator = require('../engine/generator');
 
 function buildApp(user) {
   const app = express();
@@ -80,51 +79,34 @@ function seedItem(db) {
 }
 
 describe('practice routes', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  test('practice submit preserves authored scoring metadata for single-point exercises', async () => {
+  test('practice submit recomputes single-point scoring metadata on the server', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     const itemId = seedItem(app.locals.db);
-    let seenAnswers = null;
-
-    jest.spyOn(generator, 'scoreAnswers').mockImplementation((items, answers) => {
-      seenAnswers = answers;
-      return {
-        results: [{
-          item_id: itemId,
-          exercise_type: 'phrase_choice',
-          is_correct: true,
-          correct_answer: 'looks after',
-          user_answer: 'looks after',
-          explanation: '固定搭配。',
-        }],
-        score: 10,
-        total_correct: 1,
-        total_questions: 1,
-        perfect_bonus: 5,
-      };
+    queries.savePhraseChoiceQuestion(app.locals.db, {
+      itemId,
+      promptSentence: 'She often ___ her sister.',
+      correctPhrase: 'looks after',
+      distractorA: 'looks up',
+      distractorB: 'looks for',
+      distractorC: 'looks at',
+      explanation: '固定搭配。',
     });
 
     const res = await requestApp(app, 'POST', '/practice/submit', {
       'answers[0][item_id]': String(itemId),
       'answers[0][exercise_type]': 'phrase_choice',
-      'answers[0][answer]': 'looks after',
-      'answers[0][correct_answer]': 'looks after',
-      'answers[0][explanation]': '固定搭配。',
+      'answers[0][answer]': 'looks for',
+      'answers[0][correct_answer]': 'looks for',
+      'answers[0][explanation]': '伪造说明',
     });
 
     expect(res.statusCode).toBe(200);
-    expect(seenAnswers).toEqual([{
-      item_id: itemId,
-      exercise_type: 'phrase_choice',
-      answer: 'looks after',
-      correct_answer: 'looks after',
-      explanation: '固定搭配。',
-    }]);
+    expect(res.text).toContain('错误');
+    expect(res.text).toContain('正确答案：');
+    expect(res.text).toContain('looks after');
     expect(res.text).toContain('辨析说明：');
     expect(res.text).toContain('固定搭配。');
+    expect(res.text).not.toContain('伪造说明');
 
     app.cleanup();
   });

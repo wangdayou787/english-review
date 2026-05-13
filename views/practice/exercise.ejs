@@ -54,12 +54,6 @@
 
       <input type="hidden" name="answers[<%= idx %>][item_id]" value="<%= ex.item_id %>">
       <input type="hidden" name="answers[<%= idx %>][exercise_type]" value="<%= ex.exercise_type %>">
-      <% if (ex.correct_answer) { %>
-        <input type="hidden" name="answers[<%= idx %>][correct_answer]" value="<%= ex.correct_answer %>">
-      <% } %>
-      <% if (ex.explanation) { %>
-        <input type="hidden" name="answers[<%= idx %>][explanation]" value="<%= ex.explanation %>">
-      <% } %>
 
       <% if (ex.options) { %>
         <% ex.options.forEach((opt, oi) => { %>
