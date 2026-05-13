@@ -303,7 +303,7 @@ router.post('/admin/items/:id/edit', (req, res) => {
   const normalizedEnglish = typeof english === 'string' ? english.trim() : english;
   const normalizedChinese = typeof chinese === 'string' ? chinese.trim() : chinese;
   const normalizedPos = typeof pos === 'string' ? pos.trim() : pos;
-  if (!normalizedEnglish || !normalizedChinese) {
+  if ((type === 'word' || type === 'phrase') && (!normalizedEnglish || !normalizedChinese)) {
     const unit = queries.getUnitById(db, item.unit_id);
     const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
     return renderWithLayout(res, 'admin/item-edit', {

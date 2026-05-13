@@ -354,7 +354,7 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
-  test('word, phrase, and grammar edits reject blank or whitespace-only core english/chinese fields', async () => {
+  test('word and phrase edits reject blank or whitespace-only core english/chinese fields', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId: wordItemId } = seedItem(app.locals.db, 'word');
     const { itemId: phraseItemId } = seedItem(app.locals.db, 'phrase');
@@ -386,7 +386,7 @@ describe('admin single-point item edit routes', () => {
     const grammarRes = await requestApp(app, 'POST', `/admin/items/${grammarItemId}/edit`, {
       type: 'grammar',
       english: '',
-      chinese: '',
+      chinese: '更新后的语法说明',
       pos: '',
       example: '',
       'sentence_order[answer_sentence]': 'Draft sentence',
@@ -399,17 +399,15 @@ describe('admin single-point item edit routes', () => {
     const grammarItem = queries.getItemById(app.locals.db, grammarItemId);
     expect(wordRes.statusCode).toBe(200);
     expect(phraseRes.statusCode).toBe(200);
-    expect(grammarRes.statusCode).toBe(200);
+    expect(grammarRes.statusCode).toBe(302);
     expect(wordItem.english).toBe('study');
     expect(phraseItem.chinese).toBe('照顾');
-    expect(grammarItem.english).toBe('She likes music');
-    expect(grammarItem.chinese).toBe('她喜欢音乐');
+    expect(grammarItem.english).toBeNull();
+    expect(grammarItem.chinese).toBe('更新后的语法说明');
     expect(wordRes.text).toContain('value="draft-study"');
     expect(wordRes.text).toContain('value="drafted"');
     expect(phraseRes.text).toContain('value="Draft prompt"');
     expect(phraseRes.text).toContain('value="draft answer"');
-    expect(grammarRes.text).toContain('value="Draft sentence"');
-    expect(grammarRes.text).toContain('value="Draft hint"');
 
     app.cleanup();
   });
