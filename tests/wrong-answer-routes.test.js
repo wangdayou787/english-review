@@ -130,7 +130,7 @@ describe('wrong answer routes', () => {
 
   test('student can open wrong-answer notebook with current wrong items', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
-    seedWrongItems(app.locals.db, 2);
+    const { wordId, phraseId } = seedWrongItems(app.locals.db, 2);
 
     const res = await requestApp(app, 'GET', '/wrong-items');
 
@@ -139,7 +139,8 @@ describe('wrong answer routes', () => {
     expect(res.text).toContain('study');
     expect(res.text).toContain('错误答案');
     expect(res.text).toContain('开始错题专项复习');
-    expect(res.text).toContain('href="/wrong-items/');
+    expect(res.text).toContain(`href="/wrong-items/${wordId}"`);
+    expect(res.text).toContain(`href="/wrong-items/${phraseId}"`);
     expect(res.text).toContain('查看详情');
     app.cleanup();
   });
