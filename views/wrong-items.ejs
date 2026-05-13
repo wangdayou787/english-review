@@ -45,6 +45,7 @@
         <div class="wrong-item-detail">
           <div class="text-muted">最近答案：<%= item.last_user_answer || '空' %></div>
           <div class="text-muted">最近错误：<%= item.last_wrong_at || '-' %></div>
+          <a class="btn" href="/wrong-items/<%= item.item_id %>">查看详情</a>
         </div>
       </article>
     <% }) %>

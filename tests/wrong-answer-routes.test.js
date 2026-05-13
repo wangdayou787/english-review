@@ -139,6 +139,8 @@ describe('wrong answer routes', () => {
     expect(res.text).toContain('study');
     expect(res.text).toContain('错误答案');
     expect(res.text).toContain('开始错题专项复习');
+    expect(res.text).toContain('href="/wrong-items/');
+    expect(res.text).toContain('查看详情');
     app.cleanup();
   });
 
