@@ -135,6 +135,27 @@ function normalizeSentenceTokens(tokensText, answerSentence) {
   return source ? source.split(/\s+/) : [];
 }
 
+function draftPhraseChoiceRows(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
+  return rows.map((row) => ({
+    id: row?.id || '',
+    prompt_sentence: String(row?.prompt_sentence || ''),
+    correct_phrase: String(row?.correct_phrase || ''),
+    distractor_a: String(row?.distractor_a || ''),
+    distractor_b: String(row?.distractor_b || ''),
+    distractor_c: String(row?.distractor_c || ''),
+    explanation: String(row?.explanation || ''),
+  }));
+}
+
+function draftSentenceOrderDetail(raw) {
+  return {
+    answer_sentence: String(raw?.answer_sentence || ''),
+    tokens: normalizeSentenceTokens(raw?.tokens_text, raw?.answer_sentence),
+    hint_text: String(raw?.hint_text || ''),
+  };
+}
+
 function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
   return db.prepare(
     'SELECT * FROM phrase_choice_questions WHERE id = ? AND item_id = ?'
@@ -296,9 +317,20 @@ router.post('/admin/items/:id/edit', (req, res) => {
         pos: normalizedPos,
         example: normalizeExampleText(type, example, examples),
       },
-      wordQuestionDetail: queries.getWordQuestionDetails(db, item.id),
-      phraseChoiceQuestions: queries.getPhraseChoiceQuestionsByItem(db, item.id),
-      sentenceOrderDetail: queries.getSentenceOrderDetails(db, item.id),
+      wordQuestionDetail: req.body.word_detail
+        ? {
+            base_form: req.body.word_detail.base_form || '',
+            first_letter_hint: req.body.word_detail.first_letter_hint || '',
+            usage_note: req.body.word_detail.usage_note || '',
+            inflections: normalizeWordQuestionDetails(req.body.word_detail).inflections,
+          }
+        : queries.getWordQuestionDetails(db, item.id),
+      phraseChoiceQuestions: req.body.phrase_choice
+        ? draftPhraseChoiceRows(req.body.phrase_choice)
+        : queries.getPhraseChoiceQuestionsByItem(db, item.id),
+      sentenceOrderDetail: req.body.sentence_order
+        ? draftSentenceOrderDetail(req.body.sentence_order)
+        : queries.getSentenceOrderDetails(db, item.id),
       error: '英文和中文不能为空',
     }, '编辑条目');
   }

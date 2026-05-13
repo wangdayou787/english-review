@@ -366,6 +366,9 @@ describe('admin single-point item edit routes', () => {
       chinese: '学习',
       pos: 'verb',
       example: '',
+      'word_detail[base_form]': 'draft-study',
+      'word_detail[first_letter_hint]': 'ds',
+      'word_detail[past_tense]': 'drafted',
     });
     const phraseRes = await requestApp(app, 'POST', `/admin/items/${phraseItemId}/edit`, {
       type: 'phrase',
@@ -373,6 +376,12 @@ describe('admin single-point item edit routes', () => {
       chinese: '   ',
       pos: '',
       example: '',
+      'phrase_choice[0][prompt_sentence]': 'Draft prompt',
+      'phrase_choice[0][correct_phrase]': 'draft answer',
+      'phrase_choice[0][distractor_a]': 'a',
+      'phrase_choice[0][distractor_b]': 'b',
+      'phrase_choice[0][distractor_c]': 'c',
+      'phrase_choice[0][explanation]': 'draft explanation',
     });
     const grammarRes = await requestApp(app, 'POST', `/admin/items/${grammarItemId}/edit`, {
       type: 'grammar',
@@ -380,6 +389,9 @@ describe('admin single-point item edit routes', () => {
       chinese: '',
       pos: '',
       example: '',
+      'sentence_order[answer_sentence]': 'Draft sentence',
+      'sentence_order[tokens_text]': 'Draft sentence',
+      'sentence_order[hint_text]': 'Draft hint',
     });
 
     const wordItem = queries.getItemById(app.locals.db, wordItemId);
@@ -392,6 +404,12 @@ describe('admin single-point item edit routes', () => {
     expect(phraseItem.chinese).toBe('照顾');
     expect(grammarItem.english).toBe('She likes music');
     expect(grammarItem.chinese).toBe('她喜欢音乐');
+    expect(wordRes.text).toContain('value="draft-study"');
+    expect(wordRes.text).toContain('value="drafted"');
+    expect(phraseRes.text).toContain('value="Draft prompt"');
+    expect(phraseRes.text).toContain('value="draft answer"');
+    expect(grammarRes.text).toContain('value="Draft sentence"');
+    expect(grammarRes.text).toContain('value="Draft hint"');
 
     app.cleanup();
   });
