@@ -89,6 +89,31 @@ function seedWordWrongItem(db, userId) {
   return { wordId };
 }
 
+function seedPhraseChoiceWrongItem(db, userId) {
+  const textbookId = queries.createTextbook(db, '閿欓璇炬湰');
+  const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+  const phraseId = queries.createItem(db, {
+    unitId,
+    type: 'phrase',
+    english: 'look after',
+    chinese: '鐓ч【',
+  });
+  queries.savePhraseChoiceQuestion(db, {
+    itemId: phraseId,
+    promptSentence: 'Please ___ your little sister.',
+    correctPhrase: 'look after',
+    distractorA: 'look up',
+    distractorB: 'look for',
+    distractorC: 'look into',
+    explanation: 'look after means take care of someone.',
+  });
+  db.prepare(
+    `INSERT INTO review_records (user_id, item_id, exercise_type, user_answer, is_correct)
+     VALUES (?, ?, 'phrase_choice', 'look up', 0)`
+  ).run(userId, phraseId);
+  return { phraseId };
+}
+
 describe('wrong answer routes', () => {
   test('practice dashboard exposes wrong-answer entry point', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
@@ -139,6 +164,48 @@ describe('wrong answer routes', () => {
     expect(res.text).toContain('暂无错题');
     expect(res.text).not.toContain('href="/practice/wrong?type=grammar"');
     expect(res.text).not.toContain('开始错题专项复习');
+    app.cleanup();
+  });
+
+  test('student can open wrong-answer detail with answer metadata and history', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const { phraseId } = seedPhraseChoiceWrongItem(app.locals.db, 2);
+
+    const res = await requestApp(app, 'GET', `/wrong-items/${phraseId}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('閿欓璇︽儏');
+    expect(res.text).toContain('look after');
+    expect(res.text).toContain('look up');
+    expect(res.text).toContain('look after means take care of someone.');
+    expect(res.text).toContain('鏈€杩戜綔绛旇褰?');
+    app.cleanup();
+  });
+
+  test('wrong-answer detail redirects after the item is resolved', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const { wordId } = seedWordWrongItem(app.locals.db, 2);
+    app.locals.db.prepare(
+      `INSERT INTO review_records (user_id, item_id, exercise_type, user_answer, is_correct)
+       VALUES (?, ?, 'en2cn', '瀛︿範', 1)`
+    ).run(2, wordId);
+
+    const res = await requestApp(app, 'GET', `/wrong-items/${wordId}`);
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/wrong-items');
+    app.cleanup();
+  });
+
+  test('wrong-answer detail does not expose another user item', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    app.locals.db.prepare("INSERT INTO users (id, username, password, role) VALUES (3, 'other', 'hash', 'user')").run();
+    const { wordId } = seedWordWrongItem(app.locals.db, 3);
+
+    const res = await requestApp(app, 'GET', `/wrong-items/${wordId}`);
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/wrong-items');
     app.cleanup();
   });
 

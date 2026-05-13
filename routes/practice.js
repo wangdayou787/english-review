@@ -3,6 +3,7 @@ const router = express.Router();
 const queries = require('../db/queries');
 const scheduler = require('../engine/scheduler');
 const generator = require('../engine/generator');
+const { resolveAnswerMetadata } = require('../engine/exercise-builders');
 const { requireAuth } = require('../middleware/auth');
 
 function renderWithLayout(res, view, data, title) {
@@ -18,6 +19,11 @@ function normalizeWrongFilter(value) {
 
 function buildWrongFilterHref(type) {
   return type === 'all' ? '/wrong-items' : `/wrong-items?type=${type}`;
+}
+
+function parseItemId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 router.use(requireAuth);
@@ -83,6 +89,34 @@ router.get('/wrong-items', (req, res) => {
     filters,
     activeType,
   }, '错题本');
+});
+
+router.get('/wrong-items/:itemId', (req, res) => {
+  const db = req.app.locals.db;
+  const userId = req.session.user.id;
+  const itemId = parseItemId(req.params.itemId);
+
+  if (!itemId) {
+    return res.redirect('/wrong-items');
+  }
+
+  const wrongItem = queries.getWrongItemDetailForUser(db, userId, itemId);
+  if (!wrongItem) {
+    return res.redirect('/wrong-items');
+  }
+
+  const answerMetadata = resolveAnswerMetadata(
+    { ...wrongItem, id: wrongItem.item_id },
+    wrongItem.last_exercise_type,
+    db
+  );
+  const history = queries.getReviewHistoryForUserItem(db, userId, itemId, { limit: 10 });
+
+  renderWithLayout(res, 'wrong-item-detail', {
+    wrongItem,
+    answerMetadata,
+    history,
+  }, '閿欓璇︽儏');
 });
 
 router.get('/practice/wrong', (req, res) => {

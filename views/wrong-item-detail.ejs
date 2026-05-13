@@ -1,0 +1,60 @@
+<h1>閿欓璇︽儏</h1>
+
+<section class="panel mb-2">
+  <div class="flex-between">
+    <div>
+      <span class="status-pill status-planned">
+        <%= wrongItem.type === 'word' ? '鍗曡瘝' : wrongItem.type === 'phrase' ? '鐭' : '璇硶' %>
+      </span>
+      <h2 class="mt-2"><%= wrongItem.english || wrongItem.chinese || '-' %></h2>
+      <p class="text-muted"><%= wrongItem.chinese && wrongItem.english ? wrongItem.chinese : (wrongItem.english || '-') %></p>
+    </div>
+    <a class="btn" href="/wrong-items">杩斿洖閿欓鏈?</a>
+  </div>
+</section>
+
+<section class="panel mb-2">
+  <h2 class="mb-1">鏈€杩戦敊璇?</h2>
+  <p><strong><%= wrongItem.last_user_answer || '-' %></strong></p>
+  <p class="text-muted"><%= wrongItem.last_wrong_at || '-' %></p>
+</section>
+
+<section class="panel mb-2">
+  <h2 class="mb-1">姝ｇ‘绛旀</h2>
+  <p><strong><%= answerMetadata.correct_answer || '-' %></strong></p>
+  <% if (answerMetadata.explanation) { %>
+    <p class="text-muted"><%= answerMetadata.explanation %></p>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2 class="mb-1">鏈€杩戜綔绛旇褰?</h2>
+  <% if (history.length === 0) { %>
+    <p class="text-muted">鏆傛棤璁板綍</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>绫诲瀷</th>
+          <th>绛旀</th>
+          <th>缁撴灉</th>
+          <th>鏃堕棿</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% history.forEach(record => { %>
+          <tr>
+            <td><%= record.exercise_type %></td>
+            <td><%= record.user_answer || '-' %></td>
+            <td>
+              <span class="status-pill <%= record.is_correct ? 'status-available' : 'status-planned' %>">
+                <%= record.is_correct ? '姝ｇ‘' : '閿欒' %>
+              </span>
+            </td>
+            <td><%= record.created_at || '-' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
