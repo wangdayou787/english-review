@@ -1,6 +1,52 @@
 const bcrypt = require('bcrypt');
 const { QUESTION_TYPES, serializeDisplayOptions } = require('../data/question-types');
 
+const REVIEW_RECORD_EXERCISE_TYPES = [
+  'en2cn',
+  'cn2en',
+  'listening',
+  'sentence',
+  'spelling_fill',
+  'form_fill',
+  'phrase_choice',
+  'sentence_plus',
+];
+
+function getReviewRecordExerciseTypeCheck() {
+  return REVIEW_RECORD_EXERCISE_TYPES.map(type => `'${type}'`).join(', ');
+}
+
+function ensureReviewRecordExerciseTypes(db) {
+  const row = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'review_records'"
+  ).get();
+  if (!row || !row.sql) return;
+
+  const missingTypes = REVIEW_RECORD_EXERCISE_TYPES.filter(type => !row.sql.includes(`'${type}'`));
+  if (missingTypes.length === 0) return;
+
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE review_records_new (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id       INTEGER NOT NULL REFERENCES users(id),
+        item_id       INTEGER NOT NULL REFERENCES items(id),
+        exercise_type TEXT    NOT NULL CHECK(exercise_type IN (${getReviewRecordExerciseTypeCheck()})),
+        user_answer   TEXT    NOT NULL,
+        is_correct    INTEGER NOT NULL CHECK(is_correct IN (0, 1)),
+        created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO review_records_new (id, user_id, item_id, exercise_type, user_answer, is_correct, created_at)
+      SELECT id, user_id, item_id, exercise_type, user_answer, is_correct, created_at
+      FROM review_records;
+      DROP TABLE review_records;
+      ALTER TABLE review_records_new RENAME TO review_records;
+      CREATE INDEX IF NOT EXISTS idx_review_user_item ON review_records(user_id, item_id);
+      CREATE INDEX IF NOT EXISTS idx_review_user_time ON review_records(user_id, created_at);
+    `);
+  })();
+}
+
 /**
  * Initialize the database: create tables and insert default data.
  * Idempotent — safe to call multiple times.
@@ -53,7 +99,7 @@ function initDatabase(db) {
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id       INTEGER NOT NULL REFERENCES users(id),
       item_id       INTEGER NOT NULL REFERENCES items(id),
-      exercise_type TEXT    NOT NULL CHECK(exercise_type IN ('en2cn', 'cn2en', 'listening', 'sentence')),
+      exercise_type TEXT    NOT NULL CHECK(exercise_type IN (${getReviewRecordExerciseTypeCheck()})),
       user_answer   TEXT    NOT NULL,
       is_correct    INTEGER NOT NULL CHECK(is_correct IN (0, 1)),
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -241,6 +287,8 @@ function initDatabase(db) {
   `);
 
   // ── Insert default data (idempotent via INSERT OR IGNORE) ─────
+
+  ensureReviewRecordExerciseTypes(db);
 
   // Default admin account (password: admin123)
   const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');

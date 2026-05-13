@@ -283,6 +283,8 @@ function createExercise(item, exerciseType, db, template = {}, support = null) {
         question: (wordDetail.base_form || item.english || '').trim(),
         correct_answer: correctAnswer,
         prompt_label: promptLabel,
+        usage_note: wordDetail.usage_note || '',
+        example: item.example || '',
       };
     }
 
@@ -313,6 +315,7 @@ function createExercise(item, exerciseType, db, template = {}, support = null) {
         question: item.chinese || item.english,
         correct_answer: detail.answer_sentence,
         words: shuffle(detail.tokens.filter(Boolean)),
+        hint_text: detail.hint_text || base.hint_text,
       };
     }
 
@@ -370,6 +373,7 @@ function scoreAnswer(item, exerciseType, userAnswer, correctAnswer) {
 
   return {
     item_id: item.id,
+    exercise_type: exerciseType,
     is_correct: isCorrect,
     correct_answer: correctAnswer,
     user_answer: userAnswer,

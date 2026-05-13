@@ -1,43 +1,43 @@
-<h1>Practice Result</h1>
+<h1>练习结果</h1>
 
 <div class="metric-grid">
   <section class="metric-card">
     <strong><%= score %></strong>
-    <span>Score</span>
+    <span>获得积分</span>
   </section>
   <section class="metric-card">
     <strong><%= totalCorrect %> / <%= totalQuestions %></strong>
-    <span>Accuracy</span>
+    <span>正确率</span>
   </section>
 </div>
 
 <% if (perfectBonus > 0) { %>
-  <div class="alert alert-success">Perfect round bonus +<%= perfectBonus %></div>
+  <div class="alert alert-success">全部正确，额外获得 +<%= perfectBonus %> 完美奖励分</div>
 <% } %>
 
 <% results.forEach((r) => {
   const item = items.find(i => i.id === r.item_id);
-  const itemName = item ? (item.english || item.chinese) : 'Unknown';
+  const itemName = item ? (item.english || item.chinese) : '未知';
 %>
   <div class="result-card <%= r.is_correct ? 'correct' : 'wrong' %>">
-    <span class="result-status"><%= r.is_correct ? 'Correct' : 'Wrong' %></span>
+    <span class="result-status"><%= r.is_correct ? '正确' : '错误' %></span>
     <div class="result-body">
       <strong><%= itemName %></strong>
       <% if (!r.is_correct) { %>
-        <div class="text-muted">Your answer: <%= r.user_answer || '(blank)' %></div>
-        <div class="text-success">Correct answer: <%= r.correct_answer %></div>
+        <div class="text-muted">你的答案：<%= r.user_answer || '(空)' %></div>
+        <div class="text-success">正确答案：<%= r.correct_answer %></div>
       <% } %>
       <% if (r.exercise_type === 'phrase_choice' && r.explanation) { %>
-        <div class="text-muted">Explanation: <%= r.explanation %></div>
+        <div class="text-muted">辨析说明：<%= r.explanation %></div>
       <% } %>
     </div>
     <form method="POST" action="/practice/item/<%= r.item_id %>/known" class="result-actions-inline">
-      <button type="submit" class="btn btn-sm" title="Mark as known">Known</button>
+      <button type="submit" class="btn btn-sm" title="标记为已掌握">已掌握</button>
     </form>
   </div>
 <% }) %>
 
 <div class="action-row mt-2">
-  <a href="/practice/start" class="btn btn-primary">Practice Again</a>
-  <a href="/practice" class="btn">Back</a>
+  <a href="/practice/start" class="btn btn-primary">再来一组</a>
+  <a href="/practice" class="btn">返回主页</a>
 </div>

@@ -24,4 +24,19 @@ describe('single-point scoring', () => {
     const result = generator.scoreAnswer(item, 'sentence_plus', ' She likes music ', 'She likes music');
     expect(result.is_correct).toBe(true);
   });
+
+  test('scoreAnswers keeps phrase choice explanation and exercise type', () => {
+    const items = [{ id: 5, type: 'phrase', english: 'look after', chinese: '照顾' }];
+    const answers = [{
+      item_id: 5,
+      exercise_type: 'phrase_choice',
+      answer: 'looks after',
+      correct_answer: 'looks after',
+      explanation: '固定搭配。',
+    }];
+    const result = generator.scoreAnswers(items, answers);
+    expect(result.results[0].is_correct).toBe(true);
+    expect(result.results[0].exercise_type).toBe('phrase_choice');
+    expect(result.results[0].explanation).toBe('固定搭配。');
+  });
 });
