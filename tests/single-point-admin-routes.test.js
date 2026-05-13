@@ -293,6 +293,41 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('existing phrase choice row is removed when edited into an incomplete state', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'phrase');
+    const questionId = queries.savePhraseChoiceQuestion(app.locals.db, {
+      itemId,
+      promptSentence: 'She often ___ her sister.',
+      correctPhrase: 'looks after',
+      distractorA: 'looks up',
+      distractorB: 'looks for',
+      distractorC: 'looks at',
+      explanation: '固定搭配',
+    });
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'phrase',
+      english: 'look after',
+      chinese: '照顾',
+      pos: '',
+      example: '',
+      'phrase_choice[0][id]': String(questionId),
+      'phrase_choice[0][prompt_sentence]': 'She often ___ her sister.',
+      'phrase_choice[0][correct_phrase]': '',
+      'phrase_choice[0][distractor_a]': 'looks up',
+      'phrase_choice[0][distractor_b]': 'looks for',
+      'phrase_choice[0][distractor_c]': 'looks at',
+      'phrase_choice[0][explanation]': '固定搭配',
+    });
+
+    const rows = queries.getPhraseChoiceQuestionsByItem(app.locals.db, itemId);
+    expect(res.statusCode).toBe(302);
+    expect(rows).toHaveLength(0);
+
+    app.cleanup();
+  });
+
   test('admin can save sentence order details from item edit', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId, unitId } = seedItem(app.locals.db, 'grammar');
@@ -319,14 +354,15 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
-  test('word and phrase edits reject blank core english/chinese fields', async () => {
+  test('word, phrase, and grammar edits reject blank or whitespace-only core english/chinese fields', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId: wordItemId } = seedItem(app.locals.db, 'word');
     const { itemId: phraseItemId } = seedItem(app.locals.db, 'phrase');
+    const { itemId: grammarItemId } = seedItem(app.locals.db, 'grammar');
 
     const wordRes = await requestApp(app, 'POST', `/admin/items/${wordItemId}/edit`, {
       type: 'word',
-      english: '',
+      english: '   ',
       chinese: '学习',
       pos: 'verb',
       example: '',
@@ -334,6 +370,13 @@ describe('admin single-point item edit routes', () => {
     const phraseRes = await requestApp(app, 'POST', `/admin/items/${phraseItemId}/edit`, {
       type: 'phrase',
       english: 'look after',
+      chinese: '   ',
+      pos: '',
+      example: '',
+    });
+    const grammarRes = await requestApp(app, 'POST', `/admin/items/${grammarItemId}/edit`, {
+      type: 'grammar',
+      english: '',
       chinese: '',
       pos: '',
       example: '',
@@ -341,10 +384,14 @@ describe('admin single-point item edit routes', () => {
 
     const wordItem = queries.getItemById(app.locals.db, wordItemId);
     const phraseItem = queries.getItemById(app.locals.db, phraseItemId);
+    const grammarItem = queries.getItemById(app.locals.db, grammarItemId);
     expect(wordRes.statusCode).toBe(200);
     expect(phraseRes.statusCode).toBe(200);
+    expect(grammarRes.statusCode).toBe(200);
     expect(wordItem.english).toBe('study');
     expect(phraseItem.chinese).toBe('照顾');
+    expect(grammarItem.english).toBe('She likes music');
+    expect(grammarItem.chinese).toBe('她喜欢音乐');
 
     app.cleanup();
   });

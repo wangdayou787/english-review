@@ -127,13 +127,7 @@ function normalizePhraseChoiceRows(rawRows) {
     distractorB: String(row?.distractor_b || '').trim(),
     distractorC: String(row?.distractor_c || '').trim(),
     explanation: String(row?.explanation || '').trim(),
-  })).filter((row) => (
-    row.promptSentence &&
-    row.correctPhrase &&
-    row.distractorA &&
-    row.distractorB &&
-    row.distractorC
-  ));
+  }));
 }
 
 function normalizeSentenceTokens(tokensText, answerSentence) {
@@ -285,7 +279,10 @@ router.post('/admin/items/:id/edit', (req, res) => {
   const item = queries.getItemById(db, req.params.id);
   if (!item) return res.redirect('/admin/textbooks');
   const { type, english, chinese, pos, example, examples } = req.body;
-  if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
+  const normalizedEnglish = typeof english === 'string' ? english.trim() : english;
+  const normalizedChinese = typeof chinese === 'string' ? chinese.trim() : chinese;
+  const normalizedPos = typeof pos === 'string' ? pos.trim() : pos;
+  if (!normalizedEnglish || !normalizedChinese) {
     const unit = queries.getUnitById(db, item.unit_id);
     const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
     return renderWithLayout(res, 'admin/item-edit', {
@@ -294,9 +291,9 @@ router.post('/admin/items/:id/edit', (req, res) => {
       item: {
         ...item,
         type,
-        english,
-        chinese,
-        pos,
+        english: normalizedEnglish,
+        chinese: normalizedChinese,
+        pos: normalizedPos,
         example: normalizeExampleText(type, example, examples),
       },
       wordQuestionDetail: queries.getWordQuestionDetails(db, item.id),
@@ -314,9 +311,9 @@ router.post('/admin/items/:id/edit', (req, res) => {
 
   queries.updateItem(db, req.params.id, {
     type,
-    english,
-    chinese,
-    pos,
+    english: normalizedEnglish,
+    chinese: normalizedChinese,
+    pos: normalizedPos,
     example: normalizeExampleText(type, example, examples),
   });
 
@@ -325,11 +322,20 @@ router.post('/admin/items/:id/edit', (req, res) => {
   }
   if (type === 'phrase' && req.body.phrase_choice) {
     for (const row of normalizePhraseChoiceRows(req.body.phrase_choice)) {
+      const isComplete = row.promptSentence &&
+        row.correctPhrase &&
+        row.distractorA &&
+        row.distractorB &&
+        row.distractorC;
       if (row.id) {
         if (getPhraseChoiceQuestionForItem(db, req.params.id, row.id)) {
-          queries.updatePhraseChoiceQuestion(db, row.id, row);
+          if (isComplete) {
+            queries.updatePhraseChoiceQuestion(db, row.id, row);
+          } else {
+            queries.deletePhraseChoiceQuestion(db, row.id);
+          }
         }
-      } else {
+      } else if (isComplete) {
         queries.savePhraseChoiceQuestion(db, { itemId: req.params.id, ...row });
       }
     }
