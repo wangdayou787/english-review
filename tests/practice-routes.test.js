@@ -30,7 +30,7 @@ function buildApp(user) {
   return app;
 }
 
-function requestApp(app, method, urlPath, formBody) {
+function requestApp(app, method, urlPath, formBody, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const server = app.listen(0, () => {
       const payload = formBody ? new URLSearchParams(formBody).toString() : '';
@@ -40,6 +40,7 @@ function requestApp(app, method, urlPath, formBody) {
             'Content-Length': Buffer.byteLength(payload),
           }
         : {};
+      Object.assign(headers, extraHeaders);
 
       const req = http.request({
         hostname: '127.0.0.1',
@@ -108,6 +109,23 @@ describe('practice routes', () => {
     expect(res.text).toContain('固定搭配。');
     expect(res.text).not.toContain('伪造说明');
 
+    app.cleanup();
+  });
+
+  test('marking an item known does not redirect back to the submit endpoint', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const itemId = seedItem(app.locals.db);
+
+    const res = await requestApp(
+      app,
+      'POST',
+      `/practice/item/${itemId}/known`,
+      {},
+      { Referer: 'http://localhost:3000/practice/submit' },
+    );
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/practice');
     app.cleanup();
   });
 });

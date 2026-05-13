@@ -19,7 +19,7 @@ function renderWithLayout(res, view, data, title) {
   });
 }
 
-router.use(requireAdmin);
+router.use('/admin', requireAdmin);
 
 // ── Textbooks ────────────────────────────────────────────────────
 router.get('/admin', (req, res) => res.redirect('/admin/textbooks'));

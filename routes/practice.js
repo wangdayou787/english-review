@@ -21,6 +21,18 @@ function buildWrongFilterHref(type) {
   return type === 'all' ? '/wrong-items' : `/wrong-items?type=${type}`;
 }
 
+function getKnownRedirectTarget(referrer) {
+  if (!referrer) return '/practice';
+
+  try {
+    const url = new URL(referrer, 'http://localhost');
+    const target = `${url.pathname}${url.search}`;
+    return target === '/practice/submit' ? '/practice' : target;
+  } catch (err) {
+    return '/practice';
+  }
+}
+
 function parseItemId(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -294,7 +306,7 @@ router.post('/practice/item/:id/known', (req, res) => {
   const db = req.app.locals.db;
   const userId = req.session.user.id;
   queries.setItemKnown(db, userId, req.params.id, true);
-  res.redirect(req.get('Referrer') || '/practice');
+  res.redirect(getKnownRedirectTarget(req.get('Referrer')));
 });
 
 module.exports = router;
