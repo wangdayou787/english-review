@@ -90,6 +90,19 @@ function seedWordWrongItem(db, userId) {
 }
 
 describe('wrong answer routes', () => {
+  test('practice dashboard exposes wrong-answer entry point', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedWrongItems(app.locals.db, 2);
+
+    const res = await requestApp(app, 'GET', '/practice');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('错题本');
+    expect(res.text).toContain('开始错题专项复习');
+    expect(res.text).toContain('当前错题');
+    app.cleanup();
+  });
+
   test('student can open wrong-answer notebook with current wrong items', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     seedWrongItems(app.locals.db, 2);

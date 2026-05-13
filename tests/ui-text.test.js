@@ -21,6 +21,7 @@ const filesWithUserFacingText = [
   'views/admin/review-plan.ejs',
   'views/admin/question-types.ejs',
   'views/admin/settings.ejs',
+  'views/wrong-items.ejs',
   'views/practice/dashboard.ejs',
   'views/practice/exercise.ejs',
   'views/practice/result.ejs',
@@ -44,13 +45,14 @@ const corruptedFragments = [
 ];
 
 const expectedText = {
-  'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '题型设置', '学生端预览', '系统设置', '开始复习', '学习统计', '退出'],
+  'views/layout.ejs': ['英语复习工具', '课本管理', '复习计划', '题型设置', '学生端预览', '系统设置', '开始复习', '错题本', '学习统计', '退出'],
   'views/login.ejs': ['登录', '用户名', '密码', '还没有账号？', '立即注册'],
   'views/register.ejs': ['注册', '用户名', '密码', '已有账号？', '立即登录'],
-  'views/practice/dashboard.ejs': ['复习主页', '今日进度', '今日复习', '新内容', '复习内容', '开始今日复习', '暂无复习计划', '周期复习提醒'],
+  'views/practice/dashboard.ejs': ['复习主页', '今日进度', '今日复习', '新内容', '复习内容', '开始今日复习', '暂无复习计划', '周期复习提醒', '当前错题', '开始错题专项复习'],
   'views/practice/exercise.ejs': ['提交答案', '播放发音', '输入你的答案', '单词拼写填空', '词形变换填空', '短语单选辨析', '连词成句增强版', '首字母提示'],
   'views/practice/result.ejs': ['练习结果', '获得积分', '正确率', '辨析说明', '已掌握'],
   'views/stats.ejs': ['学习统计', '总积分', '连续打卡', '总正确率'],
+  'views/wrong-items.ejs': ['错题本', '当前错题', '开始错题专项复习', '暂无错题', '错误次数'],
   'views/admin/textbooks.ejs': ['课本管理', '添加课本', '系统设置'],
   'views/admin/units.ejs': ['返回课本列表', '添加单元'],
   'views/admin/items.ejs': ['添加条目', '批量导入', '英文', '中文释义'],

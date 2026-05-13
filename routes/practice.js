@@ -31,6 +31,7 @@ router.get('/practice', (req, res) => {
   const checkIn = queries.getCheckIn(db, userId, today) || { words_done: 0, phrases_done: 0, grammar_done: 0 };
   const consecutive = queries.getConsecutiveDays(db, userId);
   const totalScore = queries.getTotalScore(db, userId);
+  const wrongCounts = queries.getWrongItemCountsForUser(db, userId);
   const activeCycles = scheduler.getActiveCycles(db);
 
   const hasItems = db.prepare('SELECT COUNT(*) as c FROM items').get().c > 0;
@@ -53,6 +54,7 @@ router.get('/practice', (req, res) => {
     checkIn,
     consecutive,
     totalScore,
+    wrongCounts,
     activeCycles,
     hasItems,
     activePlan,
@@ -147,6 +149,7 @@ router.get('/practice/start', (req, res) => {
       checkIn: queries.getCheckIn(db, userId, new Date().toISOString().slice(0, 10)) || {},
       consecutive: queries.getConsecutiveDays(db, userId),
       totalScore: queries.getTotalScore(db, userId),
+      wrongCounts: queries.getWrongItemCountsForUser(db, userId),
       activeCycles: scheduler.getActiveCycles(db),
       hasItems: true,
       error: '暂无复习内容',
