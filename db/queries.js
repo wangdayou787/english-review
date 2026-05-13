@@ -452,7 +452,7 @@ function getReviewHistoryForUserItem(db, userId, itemId, options = {}) {
     `SELECT id, user_id, item_id, exercise_type, user_answer, is_correct, created_at
      FROM review_records
      WHERE user_id = ? AND item_id = ?
-     ORDER BY id DESC
+     ORDER BY created_at DESC, id DESC
      LIMIT ?`
   ).all(userId, parsedItemId, limit);
 }

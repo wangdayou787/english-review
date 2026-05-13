@@ -148,11 +148,15 @@ describe('wrong answer query helpers', () => {
     record(db, userId, wordId, true, '瀛︿範');
     record(db, userId, phraseId, false, 'wrong phrase');
     record(db, 3, wordId, false, 'other user answer');
+    db.prepare('UPDATE review_records SET created_at = ? WHERE user_id = ? AND item_id = ? AND user_answer = ?')
+      .run('2024-01-02 10:00:00', userId, wordId, 'first wrong');
+    db.prepare('UPDATE review_records SET created_at = ? WHERE user_id = ? AND item_id = ? AND user_answer = ?')
+      .run('2024-01-01 10:00:00', userId, wordId, '瀛︿範');
 
     const history = queries.getReviewHistoryForUserItem(db, userId, wordId);
 
     expect(history).toHaveLength(2);
-    expect(history.map(row => row.user_answer)).toEqual(['瀛︿範', 'first wrong']);
+    expect(history.map(row => row.user_answer)).toEqual(['first wrong', '瀛︿範']);
     expect(history.every(row => row.item_id === wordId)).toBe(true);
     expect(history.every(row => row.user_id === userId)).toBe(true);
     db.close();
