@@ -88,6 +88,7 @@ describe('wrong answer query helpers', () => {
 
     expect(queries.getWrongItemsForUser(db, userId, { type: 'word' }).map(item => item.item_id)).toEqual([wordId]);
     expect(queries.getWrongItemsForUser(db, userId, { type: 'phrase' }).map(item => item.item_id)).toEqual([phraseId]);
+    expect(queries.getWrongItemsForUser(db, userId, { type: 'grammar' }).map(item => item.item_id)).toEqual([grammarId]);
     expect(queries.getWrongItemCountsForUser(db, userId)).toEqual({
       all: 3,
       word: 1,
