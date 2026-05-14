@@ -351,6 +351,35 @@ describe('configured question type generation', () => {
     db.close();
   });
 
+  test('enhanced sentence ordering does not present tokens in the correct order', () => {
+    const { db, grammarId } = buildDb();
+    queries.saveSentenceOrderDetails(db, grammarId, {
+      answerSentence: 'You should study harder before the examination',
+      tokens: ['You', 'should', 'study harder', 'before the examination'],
+      hintText: '',
+    });
+
+    const item = queries.getItemById(db, grammarId);
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+    const exercise = generator.createExercise(item, 'sentence_plus', db);
+    randomSpy.mockRestore();
+
+    expect(exercise.correct_answer).toBe('You should study harder before the examination');
+    expect(exercise.words).toEqual(expect.arrayContaining([
+      'You',
+      'should',
+      'study harder',
+      'before the examination',
+    ]));
+    expect(exercise.words).not.toEqual([
+      'You',
+      'should',
+      'study harder',
+      'before the examination',
+    ]);
+    db.close();
+  });
+
   test('falls back when enhanced sentence ordering has tokens but no answer sentence', () => {
     const { db, grammarId } = buildDb();
     queries.updateQuestionTypeSettings(db, [

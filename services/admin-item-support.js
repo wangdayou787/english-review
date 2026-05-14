@@ -40,6 +40,10 @@ function normalizePhraseChoiceRows(rawRows) {
 
 function normalizeSentenceTokens(tokensText, answerSentence) {
   const source = String(tokensText || answerSentence || '').trim();
+  if (!source) return [];
+  if (/[|,\n]/.test(source)) {
+    return source.split(/[|,\n]/).map(token => token.trim()).filter(Boolean);
+  }
   return source ? source.split(/\s+/).filter(Boolean) : [];
 }
 

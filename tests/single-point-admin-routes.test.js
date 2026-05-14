@@ -492,4 +492,31 @@ describe('admin single-point item edit routes', () => {
 
     app.cleanup();
   });
+
+  test('admin can save multi-word sentence ordering chunks separated by pipes', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'grammar');
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'grammar',
+      english: 'You should study harder before the examination',
+      chinese: '你应该在考试前更努力学习',
+      pos: '',
+      example: '',
+      'sentence_order[answer_sentence]': 'You should study harder before the examination',
+      'sentence_order[tokens_text]': 'You | should | study harder | before the examination',
+      'sentence_order[hint_text]': '',
+    });
+
+    const detail = queries.getSentenceOrderDetails(app.locals.db, itemId);
+
+    expect(res.statusCode).toBe(302);
+    expect(detail.tokens).toEqual([
+      'You',
+      'should',
+      'study harder',
+      'before the examination',
+    ]);
+    app.cleanup();
+  });
 });

@@ -46,7 +46,11 @@ function buildOptions(distractors, item) {
 }
 
 function shuffle(values) {
-  return [...values].sort(() => Math.random() - 0.5);
+  const shuffled = [...values].sort(() => Math.random() - 0.5);
+  if (shuffled.length > 1 && shuffled.every((value, index) => value === values[index])) {
+    return [...shuffled.slice(1), shuffled[0]];
+  }
+  return shuffled;
 }
 
 function buildBaseExercise(item, exerciseType, template) {
