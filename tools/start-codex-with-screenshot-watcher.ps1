@@ -15,6 +15,7 @@ if (-not (Test-Path -LiteralPath $watcherScript)) {
 $powershell = Join-Path $PSHOME 'powershell.exe'
 $watcherArguments = @(
   '-NoProfile',
+  '-Sta',
   '-ExecutionPolicy', 'Bypass',
   '-File', $watcherScript,
   '-ScreenshotDir', $ScreenshotDir
