@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const queries = require('../db/queries');
 const { requireAdmin } = require('../middleware/auth');
 const { normalizeExampleText } = require('../lib/item-examples');
@@ -10,6 +11,16 @@ const {
   getPhraseChoiceQuestionForItem,
   saveSupportData,
 } = require('../services/admin-item-support');
+const {
+  buildWordImportTemplateWorkbook,
+  importWordRows,
+  parseWordImportWorkbook,
+} = require('../services/word-excel-import');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+});
 
 // Reuse renderWithLayout helper
 function renderWithLayout(res, view, data, title) {
@@ -17,6 +28,12 @@ function renderWithLayout(res, view, data, title) {
     if (err) return res.status(500).send('Render error');
     res.render('layout', { title, body });
   });
+}
+
+function renderUnitItems(res, db, unit, { error = null, success = null } = {}) {
+  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
+  const items = queries.getItemsByUnit(db, unit.id);
+  renderWithLayout(res, 'admin/items', { textbook, unit, items, error, success }, unit.name);
 }
 
 router.use('/admin', requireAdmin);
@@ -169,9 +186,7 @@ router.get('/admin/units/:id/items', (req, res) => {
   const db = req.app.locals.db;
   const unit = queries.getUnitById(db, req.params.id);
   if (!unit) return res.redirect('/admin/textbooks');
-  const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
-  const items = queries.getItemsByUnit(db, req.params.id);
-  renderWithLayout(res, 'admin/items', { textbook, unit, items, error: null }, unit.name);
+  renderUnitItems(res, db, unit);
 });
 
 router.post('/admin/units/:id/items', (req, res) => {
@@ -211,6 +226,52 @@ router.post('/admin/items/batch', (req, res) => {
     ? `成功导入 ${result.count} 条；${result.errors.length} 条失败：${result.errors.join('；')}`
     : `成功导入 ${result.count} 条`;
   renderWithLayout(res, 'admin/items', { textbook, unit, items, error: null, success: msg }, unit.name);
+});
+
+router.get('/admin/units/:id/word-import-template', (req, res) => {
+  const db = req.app.locals.db;
+  const unit = queries.getUnitById(db, req.params.id);
+  if (!unit) return res.redirect('/admin/textbooks');
+
+  const buffer = buildWordImportTemplateWorkbook();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="word-import-template.xlsx"');
+  res.send(buffer);
+});
+
+router.post('/admin/units/:id/word-import', upload.single('word_excel'), (req, res) => {
+  const db = req.app.locals.db;
+  const unit = queries.getUnitById(db, req.params.id);
+  if (!unit) return res.redirect('/admin/textbooks');
+
+  if (!req.file || req.file.size === 0) {
+    return renderUnitItems(res, db, unit, { error: '请选择要导入的 Excel 文件' });
+  }
+
+  if (!req.file.originalname.toLowerCase().endsWith('.xlsx')) {
+    return renderUnitItems(res, db, unit, { error: '仅支持 .xlsx 文件' });
+  }
+
+  try {
+    const parsed = parseWordImportWorkbook(req.file.buffer);
+    const result = importWordRows(db, unit.id, parsed.rows);
+    const messages = [`成功导入 ${result.importedCount} 条`];
+
+    if (result.failedRows.length > 0) {
+      const failedRows = result.failedRows
+        .map(row => `第 ${row.rowNumber} 行：${row.message}`)
+        .join('；');
+      messages.push(`失败 ${result.failedRows.length} 条：${failedRows}`);
+    }
+
+    if (parsed.unknownHeaders.length > 0) {
+      messages.push(`未知列：${parsed.unknownHeaders.join('、')}`);
+    }
+
+    return renderUnitItems(res, db, unit, { success: messages.join('；') });
+  } catch (err) {
+    return renderUnitItems(res, db, unit, { error: err.message });
+  }
 });
 
 router.get('/admin/items/:id/edit', (req, res) => {

@@ -2,9 +2,11 @@ const express = require('express');
 const session = require('express-session');
 const http = require('http');
 const path = require('path');
+const XLSX = require('xlsx');
 const Database = require('better-sqlite3');
 const { initDatabase } = require('../db/init');
 const queries = require('../db/queries');
+const { WORD_IMPORT_HEADERS } = require('../services/word-excel-import');
 
 function buildApp(user) {
   const app = express();
@@ -65,6 +67,52 @@ function requestApp(app, method, urlPath, formBody) {
   });
 }
 
+function requestMultipart(app, method, urlPath, { fieldName, filename, contentType, buffer }) {
+  return new Promise((resolve, reject) => {
+    const boundary = '----codexwordexceltest';
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\n`),
+      Buffer.from(`Content-Disposition: form-data; name="${fieldName}"; filename="${filename}"\r\n`),
+      Buffer.from(`Content-Type: ${contentType}\r\n\r\n`),
+      buffer,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+
+    const server = app.listen(0, () => {
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: server.address().port,
+        method,
+        path: urlPath,
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': body.length,
+        },
+      }, (res) => {
+        let text = '';
+        res.on('data', chunk => { text += chunk; });
+        res.on('end', () => {
+          server.close(() => resolve({ statusCode: res.statusCode, headers: res.headers, text }));
+        });
+      });
+
+      req.on('error', err => {
+        server.close(() => reject(err));
+      });
+
+      req.write(body);
+      req.end();
+    });
+  });
+}
+
+function wordWorkbookBuffer(rows) {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Words');
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
 function seedItem(db, type) {
   const textbookId = queries.createTextbook(db, 'Admin Book');
   const unitId = queries.createUnit(db, textbookId, 'Unit 1');
@@ -80,6 +128,82 @@ function seedItem(db, type) {
 }
 
 describe('admin single-point item edit routes', () => {
+  test('admin can download the word excel import template', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestApp(app, 'GET', `/admin/units/${unitId}/word-import-template`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-disposition']).toContain('word-import-template.xlsx');
+    expect(res.headers['content-type']).toContain('spreadsheet');
+    app.cleanup();
+  });
+
+  test('admin can upload a word excel file and import word details with row feedback', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+    const buffer = wordWorkbookBuffer([
+      [...WORD_IMPORT_HEADERS, '备注'],
+      ['imported-study', '导入学习', 'v.', 'I study English.', 'study', 's', '动词原形', '', 'studies', 'studied', 'studied', 'studying', '', '', '', '', '', 'ignored'],
+      ['', '缺少英文', 'n.', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'ignored'],
+    ]);
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: 'words.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer,
+    });
+    const items = queries.getItemsByUnit(app.locals.db, unitId);
+    const imported = items.find(item => item.english === 'imported-study');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('成功导入 1 条');
+    expect(res.text).toContain('失败 1 条');
+    expect(res.text).toContain('第 3 行');
+    expect(res.text).toContain('未知列');
+    expect(res.text).toContain('备注');
+    expect(imported).toBeDefined();
+    const detail = queries.getWordQuestionDetails(app.locals.db, imported.id);
+    expect(imported).toMatchObject({ type: 'word', chinese: '导入学习', pos: 'v.' });
+    expect(detail.base_form).toBe('study');
+    expect(detail.inflections.past_tense).toBe('studied');
+    app.cleanup();
+  });
+
+  test('word excel upload reports missing file', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: '',
+      contentType: 'application/octet-stream',
+      buffer: Buffer.alloc(0),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('请选择要导入的 Excel 文件');
+    app.cleanup();
+  });
+
+  test('word excel upload rejects non-xlsx filenames', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: 'words.csv',
+      contentType: 'text/csv',
+      buffer: Buffer.from('english,chinese\nstudy,学习\n'),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('仅支持 .xlsx 文件');
+    app.cleanup();
+  });
+
   test('word edit form exposes the common inflection fields', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId } = seedItem(app.locals.db, 'word');
