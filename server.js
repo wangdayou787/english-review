@@ -42,6 +42,7 @@ app.set('views', path.join(__dirname, 'views'));
 // ── Routes ────────────────────────────────────────────────────────
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/admin'));
+app.use('/', require('./routes/admin-word-import'));
 app.use('/', require('./routes/practice'));
 app.use('/', require('./routes/stats'));
 

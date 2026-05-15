@@ -25,6 +25,7 @@ function buildApp(user) {
     next();
   });
   app.use(require('../routes/admin'));
+  app.use(require('../routes/admin-word-import'));
   app.use((err, req, res, next) => {
     res.status(500).send('Error: ' + err.message);
   });
@@ -201,6 +202,82 @@ describe('admin single-point item edit routes', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.text).toContain('仅支持 .xlsx 文件');
+    app.cleanup();
+  });
+
+  test('word excel upload reports oversized files without a 500', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: 'words.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.alloc((2 * 1024 * 1024) + 1),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('Excel 文件不能超过 2MB');
+    app.cleanup();
+  });
+
+  test('word excel upload reports unexpected upload fields without a 500', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'wrong_excel',
+      filename: 'words.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('not a real workbook'),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('Excel 文件上传失败');
+    app.cleanup();
+  });
+
+  test('word excel upload reports invalid xlsx content without a 500', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: 'words.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('not a real workbook'),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('Excel 文件解析失败');
+    app.cleanup();
+  });
+
+  test('non-admin cannot download the word excel import template', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestApp(app, 'GET', `/admin/units/${unitId}/word-import-template`);
+
+    expect(res.statusCode).toBe(403);
+    app.cleanup();
+  });
+
+  test('non-admin cannot upload a word excel file', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestMultipart(app, 'POST', `/admin/units/${unitId}/word-import`, {
+      fieldName: 'word_excel',
+      filename: 'words.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: wordWorkbookBuffer([
+        WORD_IMPORT_HEADERS,
+        ['study', '学习', 'v.', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ]),
+    });
+
+    expect(res.statusCode).toBe(403);
     app.cleanup();
   });
 

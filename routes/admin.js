@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const queries = require('../db/queries');
 const { requireAdmin } = require('../middleware/auth');
 const { normalizeExampleText } = require('../lib/item-examples');
@@ -11,37 +10,19 @@ const {
   getPhraseChoiceQuestionForItem,
   saveSupportData,
 } = require('../services/admin-item-support');
-const {
-  buildWordImportTemplateWorkbook,
-  importWordRows,
-  parseWordImportWorkbook,
-} = require('../services/word-excel-import');
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024 },
-});
-
-// Reuse renderWithLayout helper
 function renderWithLayout(res, view, data, title) {
   res.render(view, data, (err, body) => {
     if (err) return res.status(500).send('Render error');
     res.render('layout', { title, body });
   });
 }
-
 function renderUnitItems(res, db, unit, { error = null, success = null } = {}) {
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
   const items = queries.getItemsByUnit(db, unit.id);
   renderWithLayout(res, 'admin/items', { textbook, unit, items, error, success }, unit.name);
 }
-
 router.use('/admin', requireAdmin);
-
-// ── Textbooks ────────────────────────────────────────────────────
 router.get('/admin', (req, res) => res.redirect('/admin/textbooks'));
-
-// ── Review Plan ──────────────────────────────────────────────────
 router.get('/admin/review-plan', (req, res) => {
   const db = req.app.locals.db;
   const textbooks = queries.getTextbooks(db).map(textbook => ({
@@ -51,7 +32,6 @@ router.get('/admin/review-plan', (req, res) => {
   const activePlan = queries.getActiveReviewPlan(db);
   const config = queries.getConfig(db);
   const counts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
-
   renderWithLayout(res, 'admin/review-plan', {
     textbooks,
     activePlan,
@@ -61,12 +41,10 @@ router.get('/admin/review-plan', (req, res) => {
     success: null,
   }, '复习计划');
 });
-
 router.post('/admin/review-plan', (req, res) => {
   const db = req.app.locals.db;
   const rawUnitIds = req.body.unit_ids;
   const unitIds = Array.isArray(rawUnitIds) ? rawUnitIds : rawUnitIds ? [rawUnitIds] : [];
-
   if (unitIds.length === 0) {
     const textbooks = queries.getTextbooks(db).map(textbook => ({
       ...textbook,
@@ -75,7 +53,6 @@ router.post('/admin/review-plan', (req, res) => {
     const activePlan = queries.getActiveReviewPlan(db);
     const config = queries.getConfig(db);
     const counts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
-
     return renderWithLayout(res, 'admin/review-plan', {
       textbooks,
       activePlan,
@@ -85,20 +62,16 @@ router.post('/admin/review-plan', (req, res) => {
       success: null,
     }, '复习计划');
   }
-
   queries.activateReviewPlan(db, {
     name: req.body.name || '复习计划',
     unitIds,
   });
   res.redirect('/admin/review-plan');
 });
-
-// ── Question Types ────────────────────────────────────────────────
 router.get('/admin/question-types', (req, res) => {
   const groups = queries.getQuestionTypeGroups(req.app.locals.db);
   renderWithLayout(res, 'admin/question-types', { groups, error: null, success: null }, '题型设置');
 });
-
 function normalizeQuestionTypeSettings(rawSettings) {
   const settingsArray = Array.isArray(rawSettings) ? rawSettings : rawSettings ? Object.values(rawSettings) : [];
   return settingsArray.map(setting => ({
@@ -116,7 +89,6 @@ function normalizeQuestionTypeSettings(rawSettings) {
     },
   }));
 }
-
 router.post('/admin/question-types', (req, res) => {
   const db = req.app.locals.db;
   try {
@@ -130,14 +102,10 @@ router.post('/admin/question-types', (req, res) => {
     }, '题型设置');
   }
 });
-
-// ── Textbooks ────────────────────────────────────────────────────
-
 router.get('/admin/textbooks', (req, res) => {
   const textbooks = queries.getTextbooks(req.app.locals.db);
   renderWithLayout(res, 'admin/textbooks', { textbooks, error: null }, '课本管理');
 });
-
 router.post('/admin/textbooks', (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) {
@@ -147,13 +115,10 @@ router.post('/admin/textbooks', (req, res) => {
   queries.createTextbook(req.app.locals.db, name.trim());
   res.redirect('/admin/textbooks');
 });
-
 router.post('/admin/textbooks/:id/delete', (req, res) => {
   queries.deleteTextbook(req.app.locals.db, req.params.id);
   res.redirect('/admin/textbooks');
 });
-
-// ── Units ────────────────────────────────────────────────────────
 router.get('/admin/textbooks/:id/units', (req, res) => {
   const db = req.app.locals.db;
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(req.params.id);
@@ -161,7 +126,6 @@ router.get('/admin/textbooks/:id/units', (req, res) => {
   const units = queries.getUnitsByTextbook(db, req.params.id);
   renderWithLayout(res, 'admin/units', { textbook, units, error: null }, textbook.name);
 });
-
 router.post('/admin/textbooks/:id/units', (req, res) => {
   const { name } = req.body;
   const db = req.app.locals.db;
@@ -173,28 +137,23 @@ router.post('/admin/textbooks/:id/units', (req, res) => {
   queries.createUnit(db, req.params.id, name.trim());
   res.redirect(`/admin/textbooks/${req.params.id}/units`);
 });
-
 router.post('/admin/units/:id/delete', (req, res) => {
   const unit = queries.getUnitById(req.app.locals.db, req.params.id);
   if (!unit) return res.redirect('/admin/textbooks');
   queries.deleteUnit(req.app.locals.db, req.params.id);
   res.redirect(`/admin/textbooks/${unit.textbook_id}/units`);
 });
-
-// ── Items ────────────────────────────────────────────────────────
 router.get('/admin/units/:id/items', (req, res) => {
   const db = req.app.locals.db;
   const unit = queries.getUnitById(db, req.params.id);
   if (!unit) return res.redirect('/admin/textbooks');
   renderUnitItems(res, db, unit);
 });
-
 router.post('/admin/units/:id/items', (req, res) => {
   const db = req.app.locals.db;
   const unit = queries.getUnitById(db, req.params.id);
   if (!unit) return res.redirect('/admin/textbooks');
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
-
   const { type, english, chinese, pos, example, examples } = req.body;
   if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
     const items = queries.getItemsByUnit(db, req.params.id);
@@ -210,70 +169,20 @@ router.post('/admin/units/:id/items', (req, res) => {
   });
   res.redirect(`/admin/units/${req.params.id}/items`);
 });
-
 router.post('/admin/items/batch', (req, res) => {
   const db = req.app.locals.db;
   const { unit_id, data } = req.body;
   const unit = queries.getUnitById(db, unit_id);
   if (!unit) return res.redirect('/admin/textbooks');
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
-
   const lines = data.split('\n').filter(l => l.trim());
   const result = queries.batchCreateItems(db, unit_id, lines);
-
   const items = queries.getItemsByUnit(db, unit_id);
   const msg = result.errors.length > 0
     ? `成功导入 ${result.count} 条；${result.errors.length} 条失败：${result.errors.join('；')}`
     : `成功导入 ${result.count} 条`;
   renderWithLayout(res, 'admin/items', { textbook, unit, items, error: null, success: msg }, unit.name);
 });
-
-router.get('/admin/units/:id/word-import-template', (req, res) => {
-  const db = req.app.locals.db;
-  const unit = queries.getUnitById(db, req.params.id);
-  if (!unit) return res.redirect('/admin/textbooks');
-
-  const buffer = buildWordImportTemplateWorkbook();
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename="word-import-template.xlsx"');
-  res.send(buffer);
-});
-
-router.post('/admin/units/:id/word-import', upload.single('word_excel'), (req, res) => {
-  const db = req.app.locals.db;
-  const unit = queries.getUnitById(db, req.params.id);
-  if (!unit) return res.redirect('/admin/textbooks');
-
-  if (!req.file || req.file.size === 0) {
-    return renderUnitItems(res, db, unit, { error: '请选择要导入的 Excel 文件' });
-  }
-
-  if (!req.file.originalname.toLowerCase().endsWith('.xlsx')) {
-    return renderUnitItems(res, db, unit, { error: '仅支持 .xlsx 文件' });
-  }
-
-  try {
-    const parsed = parseWordImportWorkbook(req.file.buffer);
-    const result = importWordRows(db, unit.id, parsed.rows);
-    const messages = [`成功导入 ${result.importedCount} 条`];
-
-    if (result.failedRows.length > 0) {
-      const failedRows = result.failedRows
-        .map(row => `第 ${row.rowNumber} 行：${row.message}`)
-        .join('；');
-      messages.push(`失败 ${result.failedRows.length} 条：${failedRows}`);
-    }
-
-    if (parsed.unknownHeaders.length > 0) {
-      messages.push(`未知列：${parsed.unknownHeaders.join('、')}`);
-    }
-
-    return renderUnitItems(res, db, unit, { success: messages.join('；') });
-  } catch (err) {
-    return renderUnitItems(res, db, unit, { error: err.message });
-  }
-});
-
 router.get('/admin/items/:id/edit', (req, res) => {
   const db = req.app.locals.db;
   const item = queries.getItemById(db, req.params.id);
@@ -288,7 +197,6 @@ router.get('/admin/items/:id/edit', (req, res) => {
     error: null,
   }, '编辑条目');
 });
-
 router.post('/admin/items/:id/edit', (req, res) => {
   const db = req.app.locals.db;
   const item = queries.getItemById(db, req.params.id);
@@ -315,11 +223,9 @@ router.post('/admin/items/:id/edit', (req, res) => {
       error: '英文和中文不能为空',
     }, '编辑条目');
   }
-
   if (type !== item.type) {
     clearSupportData(db, req.params.id);
   }
-
   queries.updateItem(db, req.params.id, {
     type,
     english: normalizedEnglish,
@@ -327,11 +233,9 @@ router.post('/admin/items/:id/edit', (req, res) => {
     pos: normalizedPos,
     example: normalizeExampleText(type, example, examples),
   });
-
   saveSupportData(db, req.params.id, type, req.body);
   res.redirect(`/admin/units/${item.unit_id}/items`);
 });
-
 router.post('/admin/items/:itemId/phrase-choice-questions/:id/delete', (req, res) => {
   const db = req.app.locals.db;
   const row = getPhraseChoiceQuestionForItem(db, req.params.itemId, req.params.id);
@@ -340,22 +244,18 @@ router.post('/admin/items/:itemId/phrase-choice-questions/:id/delete', (req, res
   }
   res.redirect(`/admin/items/${req.params.itemId}/edit`);
 });
-
 router.post('/admin/items/:id/delete', (req, res) => {
   const item = queries.getItemById(req.app.locals.db, req.params.id);
   if (!item) return res.redirect('/admin/textbooks');
   queries.deleteItem(req.app.locals.db, req.params.id);
   res.redirect(`/admin/units/${item.unit_id}/items`);
 });
-
-// ── Settings ─────────────────────────────────────────────────────
 router.get('/admin/settings', (req, res) => {
   const db = req.app.locals.db;
   const config = queries.getConfig(db);
   const cycles = queries.getReviewCycles(db);
   renderWithLayout(res, 'admin/settings', { config, cycles, error: null, success: null }, '系统设置');
 });
-
 router.post('/admin/settings', (req, res) => {
   const db = req.app.locals.db;
   const { daily_words, daily_phrases, daily_grammar } = req.body;
@@ -364,22 +264,18 @@ router.post('/admin/settings', (req, res) => {
   queries.setConfig(db, 'daily_grammar', daily_grammar);
   res.redirect('/admin/settings');
 });
-
 router.post('/admin/cycles', (req, res) => {
   const db = req.app.locals.db;
   const { cycle_type, trigger_days, cover_days } = req.body;
   queries.createReviewCycle(db, { cycle_type, trigger_days, cover_days: parseInt(cover_days) });
   res.redirect('/admin/settings');
 });
-
 router.post('/admin/cycles/:id/toggle', (req, res) => {
   queries.toggleReviewCycle(req.app.locals.db, req.params.id);
   res.redirect('/admin/settings');
 });
-
 router.post('/admin/cycles/:id/delete', (req, res) => {
   queries.deleteReviewCycle(req.app.locals.db, req.params.id);
   res.redirect('/admin/settings');
 });
-
 module.exports = router;
