@@ -61,6 +61,15 @@ describe('word excel import service', () => {
     expect(() => parseWordImportWorkbook(buffer)).toThrow('缺少必需列：中文');
   });
 
+  test('fails when the English required header is missing', () => {
+    const buffer = workbookBuffer([
+      ['中文', '词性'],
+      ['学习', 'v.'],
+    ]);
+
+    expect(() => parseWordImportWorkbook(buffer)).toThrow('缺少必需列：英文');
+  });
+
   test('reports unknown headers while parsing known columns', () => {
     const buffer = workbookBuffer([
       ['英文', '中文', '备注'],
