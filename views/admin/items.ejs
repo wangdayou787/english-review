@@ -81,6 +81,21 @@
   </form>
 </details>
 
+<details class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <summary style="cursor:pointer;font-weight:bold;">单词 Excel 导入</summary>
+  <p class="text-muted mt-1">请使用固定列标题的 .xlsx 文件导入单词及其题型扩展信息。</p>
+  <p class="mt-1">
+    <a href="/admin/units/<%= unit.id %>/word-import-template" class="btn">下载单词导入模板</a>
+  </p>
+  <form method="POST" action="/admin/units/<%= unit.id %>/word-import" enctype="multipart/form-data" style="margin-top:0.5rem;">
+    <div class="form-group">
+      <label for="word-excel">选择 .xlsx 文件</label>
+      <input type="file" id="word-excel" name="word_excel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+    </div>
+    <button type="submit" class="btn btn-primary">导入单词 Excel</button>
+  </form>
+</details>
+
 <!-- Items list -->
 <% if (items.length === 0) { %>
   <p class="text-muted">暂无条目</p>

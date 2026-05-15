@@ -57,7 +57,7 @@ const expectedText = {
   'views/wrong-item-detail.ejs': ['错题详情', '返回错题本', '开始错题专项复习', '正确答案', '最近作答记录'],
   'views/admin/textbooks.ejs': ['课本管理', '添加课本', '系统设置'],
   'views/admin/units.ejs': ['返回课本列表', '添加单元'],
-  'views/admin/items.ejs': ['添加条目', '批量导入', '英文', '中文释义'],
+  'views/admin/items.ejs': ['添加条目', '批量导入', '英文', '中文释义', '单词 Excel 导入', '导入单词 Excel', '下载单词导入模板'],
   'views/admin/item-edit.ejs': ['编辑条目', '题型扩展信息', '辨析题', '连词成句增强版', '首字母提示', '提示文案', '保存', '取消'],
   'views/admin/review-plan.ejs': ['复习计划', '当前启用计划', '启用此复习计划', '每日配额'],
   'data/question-types.js': ['单词词汇类', '短语固定搭配类', '语法专项类', '句子句型类', '完形填空类', '阅读理解类'],

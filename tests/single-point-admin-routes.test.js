@@ -129,6 +129,21 @@ function seedItem(db, type) {
 }
 
 describe('admin single-point item edit routes', () => {
+  test('admin item page exposes word excel import controls', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestApp(app, 'GET', `/admin/units/${unitId}/items`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('单词 Excel 导入');
+    expect(res.text).toContain('导入单词 Excel');
+    expect(res.text).toContain('下载单词导入模板');
+    expect(res.text).toContain(`action="/admin/units/${unitId}/word-import"`);
+    expect(res.text).toContain(`href="/admin/units/${unitId}/word-import-template"`);
+    app.cleanup();
+  });
+
   test('admin can download the word excel import template', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { unitId } = seedItem(app.locals.db, 'word');
