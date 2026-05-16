@@ -44,19 +44,19 @@ function renderUploadError(req, res, message) {
 
 router.use('/admin', requireAdmin);
 
-router.get('/admin/units/:id/word-import-template', (req, res) => {
+router.get('/admin/units/:id/word-import-template', async (req, res) => {
   const db = req.app.locals.db;
   const unit = queries.getUnitById(db, req.params.id);
   if (!unit) return res.redirect('/admin/textbooks');
 
-  const buffer = buildWordImportTemplateWorkbook();
+  const buffer = await buildWordImportTemplateWorkbook();
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="word-import-template.xlsx"');
   res.send(buffer);
 });
 
 router.post('/admin/units/:id/word-import', (req, res) => {
-  upload.single('word_excel')(req, res, (err) => {
+  upload.single('word_excel')(req, res, async (err) => {
     if (err) {
       return renderUploadError(req, res, uploadErrorMessage(err));
     }
@@ -74,7 +74,7 @@ router.post('/admin/units/:id/word-import', (req, res) => {
     }
 
     try {
-      const parsed = parseWordImportWorkbook(req.file.buffer);
+      const parsed = await parseWordImportWorkbook(req.file.buffer);
       const result = importWordRows(db, unit.id, parsed.rows);
       const messages = [`成功导入 ${result.importedCount} 条`];
 

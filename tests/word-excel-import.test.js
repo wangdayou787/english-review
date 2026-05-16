@@ -1,4 +1,4 @@
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const Database = require('better-sqlite3');
 const { initDatabase } = require('../db/init');
 const queries = require('../db/queries');
@@ -9,11 +9,11 @@ const {
   parseWordImportWorkbook,
 } = require('../services/word-excel-import');
 
-function workbookBuffer(rows) {
-  const workbook = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Words');
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+async function workbookBuffer(rows) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Words');
+  worksheet.addRows(rows);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 function setupDb() {
@@ -25,13 +25,13 @@ function setupDb() {
 }
 
 describe('word excel import service', () => {
-  test('parses valid workbook rows by fixed Chinese headers', () => {
-    const buffer = workbookBuffer([
+  test('parses valid workbook rows by fixed Chinese headers', async () => {
+    const buffer = await workbookBuffer([
       WORD_IMPORT_HEADERS,
       ['study', '学习', 'v.', 'I study English.', 'study', 's', '动词原形', '', 'studies', 'studied', 'studied', 'studying', '', '', '', '', ''],
     ]);
 
-    const result = parseWordImportWorkbook(buffer);
+    const result = await parseWordImportWorkbook(buffer);
 
     expect(result.rows).toEqual([{
       rowNumber: 2,
@@ -52,45 +52,45 @@ describe('word excel import service', () => {
     expect(result.unknownHeaders).toEqual([]);
   });
 
-  test('fails when required headers are missing', () => {
-    const buffer = workbookBuffer([
+  test('fails when required headers are missing', async () => {
+    const buffer = await workbookBuffer([
       ['英文', '词性'],
       ['study', 'v.'],
     ]);
 
-    expect(() => parseWordImportWorkbook(buffer)).toThrow('缺少必需列：中文');
+    await expect(parseWordImportWorkbook(buffer)).rejects.toThrow('缺少必需列：中文');
   });
 
-  test('fails when the English required header is missing', () => {
-    const buffer = workbookBuffer([
+  test('fails when the English required header is missing', async () => {
+    const buffer = await workbookBuffer([
       ['中文', '词性'],
       ['学习', 'v.'],
     ]);
 
-    expect(() => parseWordImportWorkbook(buffer)).toThrow('缺少必需列：英文');
+    await expect(parseWordImportWorkbook(buffer)).rejects.toThrow('缺少必需列：英文');
   });
 
-  test('reports unknown headers while parsing known columns', () => {
-    const buffer = workbookBuffer([
+  test('reports unknown headers while parsing known columns', async () => {
+    const buffer = await workbookBuffer([
       ['英文', '中文', '备注'],
       ['apple', '苹果', 'ignore me'],
     ]);
 
-    const result = parseWordImportWorkbook(buffer);
+    const result = await parseWordImportWorkbook(buffer);
 
     expect(result.rows[0].english).toBe('apple');
     expect(result.rows[0].chinese).toBe('苹果');
     expect(result.unknownHeaders).toEqual(['备注']);
   });
 
-  test('skips empty workbook rows', () => {
-    const buffer = workbookBuffer([
+  test('skips empty workbook rows', async () => {
+    const buffer = await workbookBuffer([
       WORD_IMPORT_HEADERS,
       ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
       ['apple', '苹果', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
     ]);
 
-    const result = parseWordImportWorkbook(buffer);
+    const result = await parseWordImportWorkbook(buffer);
 
     expect(result.rows).toEqual([expect.objectContaining({
       rowNumber: 3,
@@ -148,10 +148,12 @@ describe('word excel import service', () => {
     db.close();
   });
 
-  test('builds a template workbook with the standard headers', () => {
-    const buffer = buildWordImportTemplateWorkbook();
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+  test('builds a template workbook with the standard headers', async () => {
+    const buffer = await buildWordImportTemplateWorkbook();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    const rows = [worksheet.getRow(1).values.slice(1)];
 
     expect(rows[0]).toEqual(WORD_IMPORT_HEADERS);
   });

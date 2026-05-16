@@ -2,7 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const http = require('http');
 const path = require('path');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const Database = require('better-sqlite3');
 const { initDatabase } = require('../db/init');
 const queries = require('../db/queries');
@@ -107,11 +107,11 @@ function requestMultipart(app, method, urlPath, { fieldName, filename, contentTy
   });
 }
 
-function wordWorkbookBuffer(rows) {
-  const workbook = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Words');
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+async function wordWorkbookBuffer(rows) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Words');
+  worksheet.addRows(rows);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 function seedItem(db, type) {
@@ -159,7 +159,7 @@ describe('admin single-point item edit routes', () => {
   test('admin can upload a word excel file and import word details with row feedback', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { unitId } = seedItem(app.locals.db, 'word');
-    const buffer = wordWorkbookBuffer([
+    const buffer = await wordWorkbookBuffer([
       [...WORD_IMPORT_HEADERS, '备注'],
       ['imported-study', '导入学习', 'v.', 'I study English.', 'study', 's', '动词原形', '', 'studies', 'studied', 'studied', 'studying', '', '', '', '', '', 'ignored'],
       ['', '缺少英文', 'n.', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'ignored'],
@@ -286,7 +286,7 @@ describe('admin single-point item edit routes', () => {
       fieldName: 'word_excel',
       filename: 'words.xlsx',
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      buffer: wordWorkbookBuffer([
+      buffer: await wordWorkbookBuffer([
         WORD_IMPORT_HEADERS,
         ['study', '学习', 'v.', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
       ]),

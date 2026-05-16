@@ -1,4 +1,4 @@
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const queries = require('../db/queries');
 
 const WORD_IMPORT_HEADERS = [
@@ -37,21 +37,36 @@ const INFLECTION_HEADER_MAP = {
 };
 
 function cleanCell(value) {
+  if (value && typeof value === 'object') {
+    if (Array.isArray(value.richText)) {
+      return value.richText.map(part => part.text ?? '').join('').trim();
+    }
+    if (value.text) return String(value.text).trim();
+    if (value.result !== undefined) return cleanCell(value.result);
+    if (value instanceof Date) return value.toISOString().trim();
+  }
   return String(value ?? '').trim();
 }
 
-function readWorkbookRows(buffer) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) {
+async function readWorkbookRows(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
     throw new Error('Excel 文件中没有可导入的数据');
   }
 
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
-    header: 1,
-    defval: '',
-    blankrows: true,
-  });
+  const columnCount = worksheet.columnCount;
+  const rows = [];
+  for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+    const worksheetRow = worksheet.getRow(rowNumber);
+    const row = [];
+    for (let columnNumber = 1; columnNumber <= columnCount; columnNumber++) {
+      row.push(worksheetRow.getCell(columnNumber).value ?? '');
+    }
+    rows.push(row);
+  }
+
   if (rows.length === 0) {
     throw new Error('Excel 文件中没有可导入的数据');
   }
@@ -87,8 +102,8 @@ function isEmptyDataRow(row) {
   return row.every(value => cleanCell(value) === '');
 }
 
-function parseWordImportWorkbook(buffer) {
-  const workbookRows = readWorkbookRows(buffer);
+async function parseWordImportWorkbook(buffer) {
+  const workbookRows = await readWorkbookRows(buffer);
   const headerIndex = buildHeaderIndex(workbookRows[0]);
   requireHeaders(headerIndex);
 
@@ -122,14 +137,14 @@ function parseWordImportWorkbook(buffer) {
   return { rows, unknownHeaders };
 }
 
-function buildWordImportTemplateWorkbook() {
-  const workbook = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet([
+async function buildWordImportTemplateWorkbook() {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Words');
+  worksheet.addRows([
     WORD_IMPORT_HEADERS,
     ['study', '学习', 'v.', 'I study English every day.', 'study', 's', '动词原形', '', 'studies', 'studied', 'studied', 'studying', '', '', '', '', ''],
   ]);
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Words');
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 function validateImportRow(row) {
