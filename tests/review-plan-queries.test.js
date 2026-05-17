@@ -71,4 +71,25 @@ describe('review plan query helpers', () => {
     expect(tasks[0].id).toBe(word1Id);
     expect(tasks[0].source_type).toBe('new');
   });
+
+  test('daily task helpers allow the same item on the same date for a new plan', () => {
+    const firstPlanId = queries.activateReviewPlan(db, { name: 'Unit 1', unitIds: [unit1Id] });
+    queries.saveDailyReviewTasks(db, {
+      userId: 1,
+      planId: firstPlanId,
+      taskDate: '2026-05-17',
+      tasks: [{ item_id: word1Id, source_type: 'new' }],
+    });
+
+    const nextPlanId = queries.activateReviewPlan(db, { name: 'Unit 1 Again', unitIds: [unit1Id] });
+    queries.saveDailyReviewTasks(db, {
+      userId: 1,
+      planId: nextPlanId,
+      taskDate: '2026-05-17',
+      tasks: [{ item_id: word1Id, source_type: 'cycle_review' }],
+    });
+
+    expect(queries.getDailyReviewTasks(db, 1, firstPlanId, '2026-05-17')).toHaveLength(1);
+    expect(queries.getDailyReviewTasks(db, 1, nextPlanId, '2026-05-17')).toHaveLength(1);
+  });
 });

@@ -37,6 +37,38 @@ function ensureReviewRecordExerciseTypes(db) {
   })();
 }
 
+function ensureDailyReviewTasksPlanScopedUnique(db) {
+  const row = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'daily_review_tasks'"
+  ).get();
+  if (!row || !row.sql) return;
+  if (row.sql.includes('UNIQUE(user_id, plan_id, task_date, item_id)')) return;
+
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE daily_review_tasks_new (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL REFERENCES users(id),
+        plan_id     INTEGER NOT NULL REFERENCES review_plans(id),
+        task_date   TEXT    NOT NULL,
+        item_id     INTEGER NOT NULL REFERENCES items(id),
+        source_type TEXT    NOT NULL CHECK(source_type IN ('new', 'recent_review', 'cycle_review', 'wrong')),
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(user_id, plan_id, task_date, item_id)
+      );
+      INSERT OR IGNORE INTO daily_review_tasks_new (id, user_id, plan_id, task_date, item_id, source_type, created_at)
+      SELECT id, user_id, plan_id, task_date, item_id, source_type, created_at
+      FROM daily_review_tasks;
+      DROP TABLE daily_review_tasks;
+      ALTER TABLE daily_review_tasks_new RENAME TO daily_review_tasks;
+      CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_plan_date
+        ON daily_review_tasks(user_id, plan_id, task_date);
+      CREATE INDEX IF NOT EXISTS idx_daily_tasks_plan_item
+        ON daily_review_tasks(plan_id, item_id);
+    `);
+  })();
+}
+
 /**
  * Initialize the database: create tables and insert default data.
  * Idempotent — safe to call multiple times.
@@ -150,7 +182,7 @@ function initDatabase(db) {
       item_id     INTEGER NOT NULL REFERENCES items(id),
       source_type TEXT    NOT NULL CHECK(source_type IN ('new', 'recent_review', 'cycle_review', 'wrong')),
       created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(user_id, task_date, item_id)
+      UNIQUE(user_id, plan_id, task_date, item_id)
     );
     CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_plan_date
       ON daily_review_tasks(user_id, plan_id, task_date);
@@ -279,6 +311,7 @@ function initDatabase(db) {
   // ── Insert default data (idempotent via INSERT OR IGNORE) ─────
 
   ensureReviewRecordExerciseTypes(db);
+  ensureDailyReviewTasksPlanScopedUnique(db);
 
   // Default admin account (password: admin123)
   const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');

@@ -182,6 +182,28 @@ describe('plan-aware daily scheduler', () => {
     db.close();
   });
 
+  test('sunday fallback fills quota from active plan even when wrong items exist', () => {
+    const { db, planId, unit1Words, userId } = setup();
+    queries.insertReviewRecord(db, {
+      userId,
+      itemId: unit1Words[0],
+      exerciseType: 'en2cn',
+      userAnswer: 'wrong',
+      isCorrect: false,
+    });
+
+    const sunday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-17', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    expect(sunday.words).toHaveLength(6);
+    expect(sunday.words.every(item => item.source_type === 'cycle_review')).toBe(true);
+    expect(sunday.words.map(item => item.id)).toContain(unit1Words[0]);
+    db.close();
+  });
+
   test('weekday does not replace a small review pool with extra new content', () => {
     const { db, planId, userId } = setup();
 

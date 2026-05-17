@@ -206,7 +206,9 @@ function selectPlanItemsForType({ candidates, reviewPoolItems, wrongIds, knownId
   ]);
 
   if (dayRole === 'weekend') {
-    const weekendPool = reviewItems.length > 0 ? reviewItems : available;
+    const weekendPool = reviewPoolItems.length > 0
+      ? reviewItems
+      : uniqueById([...wrongItems, ...available]);
     return weekendPool.slice(0, quota).map(item => ({ ...item, source_type: 'cycle_review' }));
   }
 
