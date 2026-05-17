@@ -416,6 +416,11 @@
   margin-top: 0.25rem;
 }
 
+.question-type-selected .question-type-summary strong,
+.question-type-selected .question-type-summary small {
+  color: var(--primary);
+}
+
 .question-type-detail-body {
   margin-top: 1rem;
 }

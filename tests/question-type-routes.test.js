@@ -91,6 +91,20 @@ describe('admin question type settings routes', () => {
     app.cleanup();
   });
 
+  test('available question type summary marks selected types and counts them', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/question-types');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('id="available-type-count"');
+    expect(res.text).toContain('8 个题型，选用 8 个');
+    expect(res.text).toContain('data-question-type-card="vocab_en_cn_choice"');
+    expect(res.text).toContain('question-type-selected');
+    expect(res.text).toContain('选用此题型');
+
+    app.cleanup();
+  });
+
   test('non-admin cannot open question type settings page', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     const res = await requestApp(app, 'GET', '/admin/question-types');

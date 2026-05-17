@@ -13,13 +13,18 @@
 </section>
 
 <form method="POST" action="/admin/question-types" class="question-type-settings">
+  <% const selectedAvailableTypeCount = availableTypes.filter(type => type.enabled).length; %>
   <section class="panel question-type-region question-type-region-primary mb-2">
     <div class="question-type-region-header">
       <div>
         <h2>可用于练习</h2>
         <p class="text-muted">当前已经支持生成和判分的题型。</p>
       </div>
-      <span class="status-pill status-available"><%= availableTypes.length %> 个题型</span>
+      <span
+        id="available-type-count"
+        class="status-pill status-available"
+        data-total-count="<%= availableTypes.length %>"
+      ><%= availableTypes.length %> 个题型<%= selectedAvailableTypeCount > 0 ? '，选用 ' + selectedAvailableTypeCount + ' 个' : '' %></span>
     </div>
 
     <% if (availableTypes.length === 0) { %>
@@ -28,7 +33,10 @@
 
     <div class="question-type-list">
       <% availableTypes.forEach((type, index) => { %>
-        <details class="question-type-card question-type-details">
+        <details
+          class="question-type-card question-type-details <%= type.enabled ? 'question-type-selected' : '' %>"
+          data-question-type-card="<%= type.code %>"
+        >
           <summary class="question-type-summary">
             <span>
               <strong><%= type.name %></strong>
@@ -41,8 +49,14 @@
             <input type="hidden" name="settings[<%= index %>][code]" value="<%= type.code %>">
 
             <label class="check-row">
-              <input type="checkbox" name="settings[<%= index %>][enabled]" <%= type.enabled ? 'checked' : '' %>>
-              <span>启用此题型</span>
+              <input
+                type="checkbox"
+                name="settings[<%= index %>][enabled]"
+                data-question-type-enabled
+                data-question-type-code="<%= type.code %>"
+                <%= type.enabled ? 'checked' : '' %>
+              >
+              <span>选用此题型</span>
             </label>
 
             <div class="form-group">
@@ -122,3 +136,28 @@
     <% }) %>
   </div>
 </section>
+
+<script>
+const availableTypeCount = document.getElementById('available-type-count');
+const enabledTypeInputs = document.querySelectorAll('[data-question-type-enabled]');
+
+function updateAvailableTypeSelection() {
+  if (!availableTypeCount) return;
+  const total = Number(availableTypeCount.dataset.totalCount || enabledTypeInputs.length);
+  const selected = Array.from(enabledTypeInputs).filter(input => input.checked).length;
+  availableTypeCount.textContent = selected > 0
+    ? `${total} 个题型，选用 ${selected} 个`
+    : `${total} 个题型`;
+
+  enabledTypeInputs.forEach(input => {
+    const card = document.querySelector(`[data-question-type-card="${input.dataset.questionTypeCode}"]`);
+    if (card) {
+      card.classList.toggle('question-type-selected', input.checked);
+    }
+  });
+}
+
+enabledTypeInputs.forEach(input => {
+  input.addEventListener('change', updateAvailableTypeSelection);
+});
+</script>

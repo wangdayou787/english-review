@@ -32,6 +32,16 @@ describe('review template safety', () => {
     expect(exercise).toContain('spellcheck="false"');
   });
 
+  test('question type settings updates selected count without inline handlers', () => {
+    const questionTypes = read('views/admin/question-types.ejs');
+
+    expect(questionTypes).toContain('id="available-type-count"');
+    expect(questionTypes).toContain('data-question-type-enabled');
+    expect(questionTypes).toContain('question-type-selected');
+    expect(questionTypes).toContain("addEventListener('change'");
+    expect(questionTypes).not.toContain('onchange=');
+  });
+
   test('stats mastered items use a passive chip class', () => {
     const stats = read('views/stats.ejs');
 
