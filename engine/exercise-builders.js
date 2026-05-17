@@ -67,7 +67,7 @@ function buildBaseExercise(item, exerciseType, template) {
   };
 }
 
-function createExercise(item, exerciseType, db, template = {}, support = null) {
+function createExercise(item, exerciseType, db, template = {}, support = null, options = {}) {
   const singlePointSupport = support || getSinglePointSupport(item, db);
   const base = buildBaseExercise(item, exerciseType, template);
 
@@ -108,21 +108,21 @@ function createExercise(item, exerciseType, db, template = {}, support = null) {
     }
     case 'form_fill': {
       const wordDetail = singlePointSupport.wordDetail || {};
-      const inflectionEntry = getInflectionEntry(wordDetail);
-      if (!inflectionEntry) return createExercise(item, 'cn2en', db, template, singlePointSupport);
-      const [promptLabel, correctAnswer] = inflectionEntry;
+      const inflectionEntry = getInflectionEntry(wordDetail, options.random || Math.random);
+      if (!inflectionEntry) return createExercise(item, 'cn2en', db, template, singlePointSupport, options);
       return {
         ...base,
         question: (wordDetail.base_form || item.english || '').trim(),
-        correct_answer: correctAnswer,
-        prompt_label: promptLabel,
+        correct_answer: inflectionEntry.value,
+        prompt_label: inflectionEntry.label,
+        prompt_key: inflectionEntry.key,
         usage_note: wordDetail.usage_note || '',
         example: item.example || '',
       };
     }
     case 'phrase_choice': {
       const row = (singlePointSupport.phraseQuestions || [])[0];
-      if (!row) return createExercise(item, 'cn2en', db, template, singlePointSupport);
+      if (!row) return createExercise(item, 'cn2en', db, template, singlePointSupport, options);
       return {
         ...base,
         question: row.prompt_sentence,
@@ -135,7 +135,7 @@ function createExercise(item, exerciseType, db, template = {}, support = null) {
       const detail = singlePointSupport.sentenceOrder;
       const tokens = Array.isArray(detail?.tokens) ? detail.tokens.filter(Boolean) : [];
       if (!detail || !String(detail.answer_sentence || '').trim() || tokens.length === 0) {
-        return createExercise(item, 'sentence', db, {}, singlePointSupport);
+        return createExercise(item, 'sentence', db, {}, singlePointSupport, options);
       }
       return {
         ...base,

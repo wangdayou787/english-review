@@ -243,6 +243,62 @@ describe('engine/generator.js', () => {
     expect(Array.isArray(ex.words)).toBe(true);
   });
 
+  test('form fill exposes Chinese target labels instead of internal inflection keys', () => {
+    const smallDb = new Database(':memory:');
+    initDatabase(smallDb);
+    const textbookId = queries.createTextbook(smallDb, 'Forms Book');
+    const unitId = queries.createUnit(smallDb, textbookId, 'Unit 1');
+    const itemId = queries.createItem(smallDb, {
+      unitId,
+      type: 'word',
+      english: 'study',
+      chinese: '学习',
+    });
+    queries.saveWordQuestionDetails(smallDb, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 's',
+      usageNote: '',
+      inflections: { plural: 'studies' },
+    });
+
+    const item = queries.getItemById(smallDb, itemId);
+    const exercise = generator.createExercise(item, 'form_fill', smallDb);
+
+    expect(exercise.prompt_label).toBe('复数');
+    expect(exercise.correct_answer).toBe('studies');
+    smallDb.close();
+  });
+
+  test('form fill can choose a later available inflection with deterministic random', () => {
+    const smallDb = new Database(':memory:');
+    initDatabase(smallDb);
+    const textbookId = queries.createTextbook(smallDb, 'Random Forms Book');
+    const unitId = queries.createUnit(smallDb, textbookId, 'Unit 1');
+    const itemId = queries.createItem(smallDb, {
+      unitId,
+      type: 'word',
+      english: 'study',
+      chinese: '学习',
+    });
+    queries.saveWordQuestionDetails(smallDb, itemId, {
+      baseForm: 'study',
+      firstLetterHint: 's',
+      usageNote: '',
+      inflections: {
+        plural: 'studies',
+        past_tense: 'studied',
+        past_participle: 'studied',
+      },
+    });
+
+    const item = queries.getItemById(smallDb, itemId);
+    const exercise = generator.createExercise(item, 'form_fill', smallDb, {}, null, { random: () => 0.5 });
+
+    expect(exercise.prompt_label).toBe('过去式');
+    expect(exercise.correct_answer).toBe('studied');
+    smallDb.close();
+  });
+
   test('scoreAnswer correctly marks correct and incorrect answers', () => {
     const item = { id: 1, english: 'apple', chinese: '苹果', type: 'word' };
 

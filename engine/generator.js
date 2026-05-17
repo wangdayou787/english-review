@@ -24,11 +24,11 @@ function generateExercises(items, db, options = {}) {
           primary_action_text: configuredType.primary_action_text,
           hint_text: configuredType.hint_text,
           display_options: configuredType.display_options,
-        }, support);
+        }, support, options);
       }
     }
 
-    return createExercise(item, pickFallbackExerciseType(item), db, {}, support);
+    return createExercise(item, pickFallbackExerciseType(item), db, {}, support, options);
   });
 }
 

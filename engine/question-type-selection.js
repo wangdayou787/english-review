@@ -5,6 +5,19 @@ const IMPLEMENTED_SINGLE_POINT_CODES = [
   'sentence_ordering',
 ];
 
+const INFLECTION_LABELS = {
+  plural: '复数',
+  third_person_singular: '第三人称单数',
+  past_tense: '过去式',
+  past_participle: '过去分词',
+  present_participle: '现在分词',
+  comparative: '比较级',
+  superlative: '最高级',
+  adverb: '副词形式',
+  adjective: '形容词形式',
+  noun: '名词形式',
+};
+
 function parseJsonOrDefault(value, fallback) {
   try {
     return JSON.parse(value || JSON.stringify(fallback));
@@ -92,14 +105,22 @@ function getSinglePointSupport(item, db) {
   };
 }
 
-function getInflectionEntry(wordDetail) {
-  if (!wordDetail || !wordDetail.inflections) return null;
-  for (const [key, value] of Object.entries(wordDetail.inflections)) {
-    if (typeof value === 'string' && value.trim()) {
-      return [key, value.trim()];
-    }
-  }
-  return null;
+function getInflectionEntries(wordDetail) {
+  if (!wordDetail || !wordDetail.inflections) return [];
+  return Object.entries(wordDetail.inflections)
+    .filter(([, value]) => typeof value === 'string' && value.trim())
+    .map(([key, value]) => ({
+      key,
+      label: INFLECTION_LABELS[key] || key,
+      value: value.trim(),
+    }));
+}
+
+function getInflectionEntry(wordDetail, random = Math.random) {
+  const entries = getInflectionEntries(wordDetail);
+  if (!entries || entries.length === 0) return null;
+  const index = Math.min(entries.length - 1, Math.floor(random() * entries.length));
+  return entries[index];
 }
 
 function isConfiguredTypeUsable(questionType, item, support) {
@@ -143,6 +164,8 @@ function pickConfiguredQuestionType(item, db, support, options = {}) {
 }
 
 module.exports = {
+  INFLECTION_LABELS,
+  getInflectionEntries,
   getInflectionEntry,
   getSinglePointSupport,
   mapQuestionTypeToExerciseType,
