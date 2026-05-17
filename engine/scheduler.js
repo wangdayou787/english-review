@@ -130,9 +130,34 @@ function groupTasksByType(tasks) {
   };
 }
 
-function getReviewDayNumber(db, userId, planId) {
-  const dates = queries.getReviewTaskDates(db, userId, planId);
-  return (dates.length % 7) + 1;
+function parseTaskDate(taskDate) {
+  return new Date(`${taskDate}T00:00:00`);
+}
+
+function formatTaskDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDayRole(taskDate) {
+  const day = parseTaskDate(taskDate).getDay();
+  return day === 0 || day === 6 ? 'weekend' : 'weekday';
+}
+
+function getCalendarWeekdayRange(taskDate) {
+  const date = parseTaskDate(taskDate);
+  const day = date.getDay();
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - daysSinceMonday);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  return {
+    startDate: formatTaskDate(monday),
+    endDate: formatTaskDate(friday),
+  };
 }
 
 function splitQuota(quota) {
@@ -167,24 +192,26 @@ function getWrongItemIds(db, userId, itemIds) {
   );
 }
 
-function selectPlanItemsForType({ candidates, recentItems, wrongIds, knownIds, quota, dayNumber }) {
+function selectPlanItemsForType({ candidates, reviewPoolItems, wrongIds, knownIds, quota, dayRole }) {
   const available = candidates.filter(item => !knownIds.has(item.id));
   if (quota <= 0 || available.length === 0) return [];
 
-  const recentIds = new Set(recentItems.map(item => item.id));
-  const newItems = available.filter(item => !recentIds.has(item.id));
+  const availableIds = new Set(available.map(item => item.id));
+  const reviewPoolIds = new Set(reviewPoolItems.map(item => item.id));
+  const newItems = available.filter(item => !reviewPoolIds.has(item.id));
   const wrongItems = available.filter(item => wrongIds.has(item.id));
   const reviewItems = uniqueById([
     ...wrongItems,
-    ...recentItems.filter(item => item.type === available[0].type && !knownIds.has(item.id)),
-  ]).filter(item => available.some(candidate => candidate.id === item.id));
+    ...reviewPoolItems.filter(item => item.type === available[0].type && availableIds.has(item.id)),
+  ]);
 
-  if (dayNumber === 1) {
-    return newItems.slice(0, quota).map(item => ({ ...item, source_type: 'new' }));
+  if (dayRole === 'weekend') {
+    const weekendPool = reviewItems.length > 0 ? reviewItems : available;
+    return weekendPool.slice(0, quota).map(item => ({ ...item, source_type: 'cycle_review' }));
   }
 
-  if (dayNumber === 6 || dayNumber === 7) {
-    return reviewItems.slice(0, quota).map(item => ({ ...item, source_type: 'cycle_review' }));
+  if (reviewItems.length === 0) {
+    return newItems.slice(0, quota).map(item => ({ ...item, source_type: 'new' }));
   }
 
   const { newTarget, reviewTarget } = splitQuota(quota);
@@ -198,18 +225,7 @@ function selectPlanItemsForType({ candidates, recentItems, wrongIds, knownIds, q
     .slice(0, newTarget)
     .map(item => ({ ...item, source_type: 'new' }));
 
-  const fallback = uniqueById([
-    ...reviewItems,
-    ...newItems,
-  ])
-    .filter(item => !selectedIds.has(item.id) && !selectedNew.some(selected => selected.id === item.id))
-    .slice(0, quota - selectedReview.length - selectedNew.length)
-    .map(item => ({
-      ...item,
-      source_type: recentIds.has(item.id) ? (wrongIds.has(item.id) ? 'wrong' : 'recent_review') : 'new',
-    }));
-
-  return [...selectedNew, ...selectedReview, ...fallback].slice(0, quota);
+  return [...selectedNew, ...selectedReview].slice(0, quota);
 }
 
 function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
@@ -218,10 +234,13 @@ function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
     return groupTasksByType(existing);
   }
 
-  const dayNumber = getReviewDayNumber(db, userId, planId);
+  const dayRole = getDayRole(taskDate);
+  const weekdayRange = getCalendarWeekdayRange(taskDate);
   const planItems = queries.getItemsForPlan(db, planId);
   const knownIds = new Set(queries.getKnownItemIds(db, userId));
-  const recentItems = queries.getRecentReviewTaskItems(db, userId, planId, dayNumber >= 6 ? 5 : 1);
+  const reviewPoolItems = dayRole === 'weekend'
+    ? queries.getReviewTaskItemsBetweenDates(db, userId, planId, weekdayRange.startDate, weekdayRange.endDate)
+    : queries.getRecentReviewTaskItems(db, userId, planId, 1);
   const wrongIds = getWrongItemIds(db, userId, planItems.map(item => item.id));
 
   const byType = {
@@ -233,27 +252,27 @@ function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
   const selected = {
     words: selectPlanItemsForType({
       candidates: byType.words,
-      recentItems,
+      reviewPoolItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_words, 10) || 0,
-      dayNumber,
+      dayRole,
     }),
     phrases: selectPlanItemsForType({
       candidates: byType.phrases,
-      recentItems,
+      reviewPoolItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_phrases, 10) || 0,
-      dayNumber,
+      dayRole,
     }),
     grammar: selectPlanItemsForType({
       candidates: byType.grammar,
-      recentItems,
+      reviewPoolItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_grammar, 10) || 0,
-      dayNumber,
+      dayRole,
     }),
   };
 

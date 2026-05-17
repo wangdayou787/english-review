@@ -30,7 +30,7 @@ function setup() {
 }
 
 describe('plan-aware daily scheduler', () => {
-  test('day 1 generates quota-limited new content from active plan scope', () => {
+  test('monday with no review pool generates quota-limited new content from active plan scope', () => {
     const { db, planId, unit1Words, unit2Words, userId } = setup();
 
     const tasks = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-11', {
@@ -64,7 +64,7 @@ describe('plan-aware daily scheduler', () => {
     db.close();
   });
 
-  test('day 2 uses one new word and five review words for quota six', () => {
+  test('weekday uses one new word and five review words for quota six when review pool is large enough', () => {
     const { db, planId, userId } = setup();
 
     const day1 = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-11', {
@@ -122,7 +122,7 @@ describe('plan-aware daily scheduler', () => {
     db.close();
   });
 
-  test('day 6 introduces no new content', () => {
+  test('saturday introduces no new content after monday to friday tasks exist', () => {
     const { db, planId, userId } = setup();
 
     for (let day = 11; day <= 15; day++) {
@@ -141,6 +141,65 @@ describe('plan-aware daily scheduler', () => {
 
     expect(day6.words).toHaveLength(6);
     expect(day6.words.every(item => item.source_type === 'cycle_review')).toBe(true);
+    db.close();
+  });
+
+  test('sunday consolidates items from the current calendar week', () => {
+    const { db, planId, userId } = setup();
+
+    for (let day = 11; day <= 15; day++) {
+      scheduler.getOrCreateDailyReviewTasks(db, userId, planId, `2026-05-${day}`, {
+        daily_words: 6,
+        daily_phrases: 0,
+        daily_grammar: 0,
+      });
+    }
+
+    const sunday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-17', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    expect(sunday.words).toHaveLength(6);
+    expect(sunday.words.every(item => item.source_type === 'cycle_review')).toBe(true);
+    expect(new Set(sunday.words.map(item => item.task_date))).toEqual(new Set(['2026-05-17']));
+    db.close();
+  });
+
+  test('sunday falls back to active plan items when current week has no task history', () => {
+    const { db, planId, unit1Words, userId } = setup();
+
+    const sunday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-17', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    expect(sunday.words).toHaveLength(6);
+    expect(sunday.words.every(item => item.source_type === 'cycle_review')).toBe(true);
+    expect(sunday.words.map(item => item.id).every(id => unit1Words.includes(id))).toBe(true);
+    db.close();
+  });
+
+  test('weekday does not replace a small review pool with extra new content', () => {
+    const { db, planId, userId } = setup();
+
+    scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-13', {
+      daily_words: 2,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    const thursday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-14', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    expect(thursday.words.filter(item => item.source_type === 'new')).toHaveLength(1);
+    expect(thursday.words.filter(item => item.source_type === 'recent_review')).toHaveLength(2);
+    expect(thursday.words).toHaveLength(3);
     db.close();
   });
 

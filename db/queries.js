@@ -580,6 +580,18 @@ function getRecentReviewTaskItems(db, userId, planId, limitDays) {
   ).all(userId, planId, ...dates);
 }
 
+function getReviewTaskItemsBetweenDates(db, userId, planId, startDate, endDate) {
+  return db.prepare(
+    `SELECT items.*, daily_review_tasks.source_type, daily_review_tasks.task_date
+     FROM daily_review_tasks
+     JOIN items ON items.id = daily_review_tasks.item_id
+     WHERE daily_review_tasks.user_id = ?
+       AND daily_review_tasks.plan_id = ?
+       AND daily_review_tasks.task_date BETWEEN ? AND ?
+     ORDER BY daily_review_tasks.task_date, daily_review_tasks.id`
+  ).all(userId, planId, startDate, endDate);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Question Types
 // ═══════════════════════════════════════════════════════════════
@@ -842,6 +854,7 @@ module.exports = {
   saveDailyReviewTasks,
   getReviewTaskDates,
   getRecentReviewTaskItems,
+  getReviewTaskItemsBetweenDates,
   getWordQuestionDetails,
   saveWordQuestionDetails,
   getPhraseChoiceQuestionsByItem,
