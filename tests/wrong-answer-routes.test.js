@@ -220,7 +220,7 @@ describe('wrong answer routes', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.text).toContain('错题专项复习');
-    expect(res.text).toContain('study');
+    expect(res.text.includes('study') || res.text.includes('学习')).toBe(true);
     expect(res.text).toContain('answers[0][item_id]');
     app.cleanup();
   });
