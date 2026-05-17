@@ -391,6 +391,7 @@ describe('db/init.js â€?database initialization', () => {
     const codes = rows.map(row => row.code);
 
     expect(codes).toContain('vocab_en_cn_choice');
+    expect(codes).toContain('translation_fill');
     expect(codes).toContain('vocab_listening_choice');
     expect(codes).toContain('phrase_cn_en_fill');
     expect(codes).toContain('sentence_ordering');

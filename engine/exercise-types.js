@@ -1,6 +1,8 @@
 const EXERCISE_TYPES = [
   'en2cn',
   'cn2en',
+  'cn2en_choice',
+  'en2cn_fill',
   'listening',
   'sentence',
   'spelling_fill',

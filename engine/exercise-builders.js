@@ -89,6 +89,12 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
       };
     case 'cn2en':
       return { ...base, question: item.chinese, correct_answer: item.english };
+    case 'en2cn_fill':
+      return {
+        ...base,
+        question: item.english,
+        correct_answer: item.chinese,
+      };
     case 'listening':
       return {
         ...base,

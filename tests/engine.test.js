@@ -266,6 +266,37 @@ describe('engine/generator.js', () => {
     expect(exercise.options).toContain(item.english);
   });
 
+  test('english to chinese fill asks for direct Chinese translation', () => {
+    const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'word');
+
+    const exercise = generator.createExercise(item, 'en2cn_fill', db);
+
+    expect(exercise.exercise_type).toBe('en2cn_fill');
+    expect(exercise.question).toBe(item.english);
+    expect(exercise.correct_answer).toBe(item.chinese);
+    expect(exercise.options).toBeUndefined();
+  });
+
+  test('translation fill question type supports phrase items', () => {
+    const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'phrase');
+    db.prepare('UPDATE question_type_settings SET enabled = 0').run();
+    db.prepare(
+      `INSERT INTO question_type_settings (question_type_code, enabled, weight, instruction_text, primary_action_text, hint_text, display_options)
+       VALUES ('translation_fill', 1, 100, '写出对应的翻译。', '提交答案', '注意拼写和中文释义。', '{}')
+       ON CONFLICT(question_type_code) DO UPDATE SET enabled = excluded.enabled, weight = excluded.weight`
+    ).run();
+
+    const cnToEn = generator.generateExercises([item], db, { random: () => 0.25 })[0];
+    const enToCn = generator.generateExercises([item], db, { random: () => 0.75 })[0];
+
+    expect(cnToEn.exercise_type).toBe('cn2en');
+    expect(cnToEn.question).toBe(item.chinese);
+    expect(cnToEn.correct_answer).toBe(item.english);
+    expect(enToCn.exercise_type).toBe('en2cn_fill');
+    expect(enToCn.question).toBe(item.english);
+    expect(enToCn.correct_answer).toBe(item.chinese);
+  });
+
   test('sentence exercise splits example into words for ordering', () => {
     const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'grammar');
     const ex = generator.createExercise(item, 'sentence', db);

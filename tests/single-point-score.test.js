@@ -25,6 +25,15 @@ describe('single-point scoring', () => {
     expect(result.is_correct).toBe(true);
   });
 
+  test('english to chinese fill trims whitespace and compares Chinese meaning exactly', () => {
+    const item = { id: 6, type: 'word', english: 'apple', chinese: '苹果' };
+    const correct = generator.scoreAnswer(item, 'en2cn_fill', ' 苹果 ', '苹果');
+    const wrong = generator.scoreAnswer(item, 'en2cn_fill', '苹果子', '苹果');
+
+    expect(correct.is_correct).toBe(true);
+    expect(wrong.is_correct).toBe(false);
+  });
+
   test('scoreAnswers keeps phrase choice explanation and exercise type', () => {
     const items = [{ id: 5, type: 'phrase', english: 'look after', chinese: '照顾' }];
     const answers = [{

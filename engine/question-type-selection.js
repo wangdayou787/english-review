@@ -31,6 +31,9 @@ function mapQuestionTypeToExerciseType(questionType, item, options = {}) {
     case 'vocab_en_cn_choice':
       if (item.type !== 'word' && item.type !== 'phrase') return null;
       return (options.random || Math.random)() < 0.5 ? 'en2cn' : 'cn2en_choice';
+    case 'translation_fill':
+      if (item.type !== 'word' && item.type !== 'phrase') return null;
+      return (options.random || Math.random)() < 0.5 ? 'cn2en' : 'en2cn_fill';
     case 'vocab_spelling_fill': return item.type === 'word' ? 'spelling_fill' : null;
     case 'vocab_form_transform': return item.type === 'word' ? 'form_fill' : null;
     case 'vocab_listening_choice': return item.type === 'word' || item.type === 'phrase' ? 'listening' : null;

@@ -50,6 +50,9 @@ function scoreAnswer(item, exerciseType, userAnswer, correctAnswer) {
     case 'sentence_plus':
       isCorrect = normalizedUser === normalizedCorrect;
       break;
+    case 'en2cn_fill':
+      isCorrect = normalizedUser === normalizedCorrect;
+      break;
     default:
       isCorrect = normalizedUser === normalizedCorrect;
   }
@@ -67,6 +70,8 @@ function getDefaultAnswerMetadata(item, answer) {
   switch (answer.exercise_type) {
     case 'en2cn':
     case 'listening':
+      return { correct_answer: item.chinese || '', explanation: '' };
+    case 'en2cn_fill':
       return { correct_answer: item.chinese || '', explanation: '' };
     case 'cn2en':
       return { correct_answer: item.english || '', explanation: '' };
