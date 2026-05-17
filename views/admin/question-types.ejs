@@ -9,30 +9,35 @@
 
 <section class="panel mb-2">
   <h2 class="mb-1">题型生成规则</h2>
-  <p class="text-muted">只有“可用于练习”并已启用的题型会进入学生练习；“后续支持”的题型可先配置，不会生成到学生端。</p>
+  <p class="text-muted">只有“可用于练习”并已启用的题型会进入学生练习；“后续支持”的题型只展示规划方向，当前不会生成到学生端。</p>
 </section>
 
 <form method="POST" action="/admin/question-types" class="question-type-settings">
-  <% let index = 0; %>
-  <% groups.forEach(group => { %>
-    <section class="panel question-type-group mb-2">
-      <h2><%= group.label %></h2>
-      <% if (group.types.length === 0) { %>
-        <p class="text-muted">暂无题型</p>
-      <% } %>
-      <div class="question-type-list">
-        <% group.types.forEach(type => { %>
-          <article class="question-type-card">
-            <div class="question-type-card-header">
-              <div>
-                <h3><%= type.name %></h3>
-                <p class="text-muted"><%= type.description %></p>
-              </div>
-              <span class="status-pill <%= type.implementation_status === 'available' ? 'status-available' : 'status-planned' %>">
-                <%= type.implementation_status === 'available' ? '可用于练习' : '后续支持' %>
-              </span>
-            </div>
+  <section class="panel question-type-region question-type-region-primary mb-2">
+    <div class="question-type-region-header">
+      <div>
+        <h2>可用于练习</h2>
+        <p class="text-muted">当前已经支持生成和判分的题型。</p>
+      </div>
+      <span class="status-pill status-available"><%= availableTypes.length %> 个题型</span>
+    </div>
 
+    <% if (availableTypes.length === 0) { %>
+      <p class="text-muted">暂无可用于练习的题型</p>
+    <% } %>
+
+    <div class="question-type-list">
+      <% availableTypes.forEach((type, index) => { %>
+        <details class="question-type-card question-type-details">
+          <summary class="question-type-summary">
+            <span>
+              <strong><%= type.name %></strong>
+              <small><%= type.category_label %> · <%= type.description %></small>
+            </span>
+            <span class="status-pill status-available">可用于练习</span>
+          </summary>
+
+          <div class="question-type-detail-body">
             <input type="hidden" name="settings[<%= index %>][code]" value="<%= type.code %>">
 
             <label class="check-row">
@@ -78,12 +83,42 @@
                 <span>显示首字母提示</span>
               </label>
             </div>
-          </article>
-          <% index += 1; %>
-        <% }) %>
-      </div>
-    </section>
-  <% }) %>
+          </div>
+        </details>
+      <% }) %>
+    </div>
+  </section>
 
   <button type="submit" class="btn btn-primary">保存题型设置</button>
 </form>
+
+<section class="panel question-type-region mb-2">
+  <div class="question-type-region-header">
+    <div>
+      <h2>后续支持</h2>
+      <p class="text-muted">后续规划题型，目前只展示名称和待做事项。</p>
+    </div>
+    <span class="status-pill status-planned"><%= plannedTypes.length %> 个题型</span>
+  </div>
+
+  <% if (plannedTypes.length === 0) { %>
+    <p class="text-muted">暂无后续支持题型</p>
+  <% } %>
+
+  <div class="question-type-list">
+    <% plannedTypes.forEach(type => { %>
+      <details class="question-type-card question-type-details">
+        <summary class="question-type-summary">
+          <span>
+            <strong><%= type.name %></strong>
+            <small><%= type.category_label %> · <%= type.description %></small>
+          </span>
+          <span class="status-pill status-planned">后续支持</span>
+        </summary>
+        <div class="question-type-detail-body">
+          <p class="text-muted mb-0"><%= type.description %></p>
+        </div>
+      </details>
+    <% }) %>
+  </div>
+</section>

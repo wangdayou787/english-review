@@ -73,7 +73,16 @@
         <div id="sentence-result-<%= idx %>" class="sentence-result"></div>
         <input type="hidden" name="answers[<%= idx %>][answer]" id="sentence-input-<%= idx %>">
       <% } else { %>
-        <input type="text" class="answer-input" name="answers[<%= idx %>][answer]" placeholder="输入你的答案" required>
+        <input
+          type="text"
+          class="answer-input"
+          name="answers[<%= idx %>][answer]"
+          placeholder="输入你的答案"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          required
+        >
       <% } %>
 
       <% if (ex.hint_text) { %>

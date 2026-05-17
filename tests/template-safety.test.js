@@ -24,6 +24,14 @@ describe('review template safety', () => {
     expect(exercise).toContain('addEventListener');
   });
 
+  test('practice text answer inputs disable browser answer history', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).toContain('autocomplete="off"');
+    expect(exercise).toContain('autocapitalize="off"');
+    expect(exercise).toContain('spellcheck="false"');
+  });
+
   test('stats mastered items use a passive chip class', () => {
     const stats = read('views/stats.ejs');
 

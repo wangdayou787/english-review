@@ -364,6 +364,19 @@
   gap: 1rem;
 }
 
+.question-type-region-primary {
+  border-color: #9cc7a8;
+  box-shadow: 0 1px 0 rgba(37, 99, 66, 0.08);
+}
+
+.question-type-region-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
 .question-type-list {
   display: grid;
   gap: 1rem;
@@ -382,6 +395,29 @@
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.question-type-summary {
+  align-items: flex-start;
+  cursor: pointer;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.question-type-summary::-webkit-details-marker {
+  display: none;
+}
+
+.question-type-summary small {
+  color: #667085;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.question-type-detail-body {
+  margin-top: 1rem;
 }
 
 .status-pill {

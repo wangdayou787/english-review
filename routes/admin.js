@@ -69,9 +69,34 @@ router.post('/admin/review-plan', (req, res) => {
   res.redirect('/admin/review-plan');
 });
 router.get('/admin/question-types', (req, res) => {
-  const groups = queries.getQuestionTypeGroups(req.app.locals.db);
-  renderWithLayout(res, 'admin/question-types', { groups, error: null, success: null }, '题型设置');
+  renderWithLayout(
+    res,
+    'admin/question-types',
+    getQuestionTypeSettingsViewData(req.app.locals.db),
+    '题型设置'
+  );
 });
+function getQuestionTypeSettingsViewData(db, { error = null, success = null } = {}) {
+  const groups = queries.getQuestionTypeGroups(db);
+  const availableTypes = [];
+  const plannedTypes = [];
+
+  groups.forEach(group => {
+    group.types.forEach(type => {
+      const viewType = {
+        ...type,
+        category_label: group.label,
+      };
+      if (type.implementation_status === 'available') {
+        availableTypes.push(viewType);
+      } else {
+        plannedTypes.push(viewType);
+      }
+    });
+  });
+
+  return { availableTypes, plannedTypes, error, success };
+}
 function normalizeQuestionTypeSettings(rawSettings) {
   const settingsArray = Array.isArray(rawSettings) ? rawSettings : rawSettings ? Object.values(rawSettings) : [];
   return settingsArray.map(setting => ({
@@ -95,11 +120,12 @@ router.post('/admin/question-types', (req, res) => {
     queries.updateQuestionTypeSettings(db, normalizeQuestionTypeSettings(req.body.settings));
     res.redirect('/admin/question-types');
   } catch (err) {
-    renderWithLayout(res, 'admin/question-types', {
-      groups: queries.getQuestionTypeGroups(db),
-      error: err.message,
-      success: null,
-    }, '题型设置');
+    renderWithLayout(
+      res,
+      'admin/question-types',
+      getQuestionTypeSettingsViewData(db, { error: err.message }),
+      '题型设置'
+    );
   }
 });
 router.get('/admin/textbooks', (req, res) => {

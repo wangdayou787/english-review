@@ -76,6 +76,21 @@ describe('admin question type settings routes', () => {
     app.cleanup();
   });
 
+  test('question type settings separates available and planned types', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/question-types');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text.indexOf('可用于练习')).toBeGreaterThan(-1);
+    expect(res.text.indexOf('后续支持')).toBeGreaterThan(res.text.indexOf('可用于练习'));
+    expect(res.text).toContain('value="vocab_en_cn_choice"');
+    expect(res.text).not.toContain('value="vocab_word_bank_fill"');
+    expect(res.text).toContain('选词填空');
+    expect(res.text).toContain('从词库中选择合适单词填入句子。');
+
+    app.cleanup();
+  });
+
   test('non-admin cannot open question type settings page', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     const res = await requestApp(app, 'GET', '/admin/question-types');
