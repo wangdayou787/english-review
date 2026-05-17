@@ -174,4 +174,28 @@ describe('student review plan flow', () => {
     expect(savedAfterSecond).toBe(3);
     app.cleanup();
   });
+
+  test('student dashboard creates today review tasks when active plan has eligible content', async () => {
+    const app = buildAppForRoute({ id: 2, username: 'student', role: 'user' }, require('../routes/practice'));
+    const db = app.locals.db;
+    const textbookId = queries.createTextbook(db, '七年级上册');
+    const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+    for (let i = 1; i <= 6; i++) {
+      queries.createItem(db, { unitId, type: 'word', english: `word-${i}`, chinese: `词${i}` });
+    }
+    const planId = queries.activateReviewPlan(db, { name: 'Unit 1', unitIds: [unitId] });
+    queries.setConfig(db, 'daily_words', '3');
+    queries.setConfig(db, 'daily_phrases', '0');
+    queries.setConfig(db, 'daily_grammar', '0');
+
+    const res = await requestApp(app, 'GET', '/practice');
+    const savedAfterDashboard = db.prepare(
+      'SELECT COUNT(*) AS count FROM daily_review_tasks WHERE user_id = 2 AND plan_id = ?'
+    ).get(planId).count;
+
+    expect(res.statusCode).toBe(200);
+    expect(savedAfterDashboard).toBe(3);
+    expect(res.text).not.toContain('暂无复习内容');
+    app.cleanup();
+  });
 });

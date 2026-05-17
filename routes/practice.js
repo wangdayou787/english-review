@@ -56,9 +56,10 @@ router.get('/practice', (req, res) => {
 
   const activePlan = queries.getActiveReviewPlan(db);
   const planCounts = activePlan ? queries.getPlanItemCounts(db, activePlan.id) : { word: 0, phrase: 0, grammar: 0 };
-  const todayTasks = activePlan
-    ? queries.getDailyReviewTasks(db, userId, activePlan.id, today)
-    : [];
+  const todayTaskGroups = activePlan
+    ? scheduler.getOrCreateDailyReviewTasks(db, userId, activePlan.id, today, config)
+    : { words: [], phrases: [], grammar: [] };
+  const todayTasks = [...todayTaskGroups.words, ...todayTaskGroups.phrases, ...todayTaskGroups.grammar];
   const taskSummary = {
     words: todayTasks.filter(item => item.type === 'word').length,
     phrases: todayTasks.filter(item => item.type === 'phrase').length,
@@ -190,6 +191,7 @@ router.get('/practice/start', (req, res) => {
   }
 
   if (items.length === 0) {
+    const emptyActivePlan = queries.getActiveReviewPlan(db);
     return renderWithLayout(res, 'practice/dashboard', {
       config,
       checkIn: queries.getCheckIn(db, userId, new Date().toISOString().slice(0, 10)) || {},
@@ -199,8 +201,10 @@ router.get('/practice/start', (req, res) => {
       activeCycles: scheduler.getActiveCycles(db),
       hasItems: true,
       error: '暂无复习内容',
-      activePlan: queries.getActiveReviewPlan(db),
-      planCounts: { word: 0, phrase: 0, grammar: 0 },
+      activePlan: emptyActivePlan,
+      planCounts: emptyActivePlan
+        ? queries.getPlanItemCounts(db, emptyActivePlan.id)
+        : { word: 0, phrase: 0, grammar: 0 },
       taskSummary: { words: 0, phrases: 0, grammar: 0, newContent: 0, reviewContent: 0 },
     }, '复习主页');
   }
