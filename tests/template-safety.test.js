@@ -39,6 +39,19 @@ describe('review template safety', () => {
     expect(exercise).not.toContain('ex.hint_text');
   });
 
+  test('paginated practice stores answers and only submits from the final page', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).toContain('data-answer-storage-key');
+    expect(exercise).toContain('saveCurrentPageAnswers');
+    expect(exercise).toContain('restoreCurrentPageAnswers');
+    expect(exercise).toContain('appendStoredAnswersForSubmit');
+    expect(exercise).toContain('sessionStorage');
+    expect(exercise).toContain('reportValidity');
+    expect(exercise).toContain('page === totalPages');
+    expect(exercise).not.toContain('<button type="submit" class="primary-action">提交答案</button>');
+  });
+
   test('question type settings no longer exposes hint text inputs', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 

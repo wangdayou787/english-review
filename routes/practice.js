@@ -152,6 +152,7 @@ router.get('/practice/wrong', (req, res) => {
     page: 1,
     totalPages: 1,
     totalItems: items.length,
+    answerStorageKey: '',
   }, '错题专项复习');
 });
 
@@ -214,6 +215,10 @@ router.get('/practice/start', (req, res) => {
   const perPage = 20;
   const totalPages = Math.ceil(items.length / perPage);
   const pageItems = items.slice((page - 1) * perPage, page * perPage);
+  const today = new Date().toISOString().slice(0, 10);
+  const answerStorageKey = cycleType
+    ? `practice-answers:cycle:${cycleType}:${today}`
+    : `practice-answers:daily:${today}`;
 
   const exercises = generator.generateExercises(pageItems, db);
 
@@ -224,6 +229,7 @@ router.get('/practice/start', (req, res) => {
     page,
     totalPages,
     totalItems: items.length,
+    answerStorageKey,
   }, title);
 });
 

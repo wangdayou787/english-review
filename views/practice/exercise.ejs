@@ -4,7 +4,14 @@
   <% if (totalPages > 1) { %>(第 <%= page %> / <%= totalPages %> 页)<% } %>
 </p>
 
-<form id="exercise-form" method="POST" action="/practice/submit">
+<form
+  id="exercise-form"
+  method="POST"
+  action="/practice/submit"
+  data-answer-storage-key="<%= answerStorageKey || '' %>"
+  data-page="<%= page %>"
+  data-total-pages="<%= totalPages %>"
+>
   <% if (typeof cycleType !== 'undefined' && cycleType) { %>
     <input type="hidden" name="cycle" value="<%= cycleType %>">
   <% } %>
@@ -88,12 +95,20 @@
   <% }) %>
 
   <div class="form-actions">
-    <% if (page < totalPages) { %>
-      <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn">下一页</a>
+    <% if (page > 1) { %>
+      <a href="?page=<%= page - 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn js-page-link">上一页</a>
     <% } else { %>
       <span></span>
     <% } %>
-    <button type="submit" class="primary-action">提交答案</button>
+    <% if (page < totalPages) { %>
+      <a href="?page=<%= page + 1 %><%= typeof cycleType !== 'undefined' && cycleType ? '&cycle=' + cycleType : '' %>" class="btn js-page-link">下一页</a>
+    <% } else { %>
+      <button
+        type="submit"
+        class="primary-action"
+        data-final-submit
+      >提交答案</button>
+    <% } %>
   </div>
 </form>
 
@@ -110,6 +125,122 @@ function speak(text) {
 document.querySelectorAll('.js-speak').forEach(button => {
   button.addEventListener('click', () => speak(button.dataset.question || ''));
 });
+
+const exerciseForm = document.getElementById('exercise-form');
+const answerStorageKey = exerciseForm ? exerciseForm.dataset.answerStorageKey : '';
+const page = exerciseForm ? Number(exerciseForm.dataset.page || '1') : 1;
+const totalPages = exerciseForm ? Number(exerciseForm.dataset.totalPages || '1') : 1;
+
+function readStoredAnswers() {
+  if (!answerStorageKey || !window.sessionStorage) return {};
+  try {
+    return JSON.parse(sessionStorage.getItem(answerStorageKey) || '{}');
+  } catch (err) {
+    return {};
+  }
+}
+
+function writeStoredAnswers(answers) {
+  if (!answerStorageKey || !window.sessionStorage) return;
+  sessionStorage.setItem(answerStorageKey, JSON.stringify(answers));
+}
+
+function getAnswerGroups() {
+  const groups = new Map();
+  document.querySelectorAll('[name^="answers["]').forEach(input => {
+    const match = input.name.match(/^answers\[(\d+)\]\[(.+)\]$/);
+    if (!match) return;
+    const index = match[1];
+    const field = match[2];
+    if (!groups.has(index)) groups.set(index, {});
+    groups.get(index)[field] = input;
+  });
+  return groups;
+}
+
+function getAnswerValue(fields) {
+  if (!fields.answer) return '';
+  if (fields.answer instanceof RadioNodeList) {
+    return fields.answer.value || '';
+  }
+  if (fields.answer.type === 'radio') {
+    const checked = document.querySelector(`[name="${fields.answer.name}"]:checked`);
+    return checked ? checked.value : '';
+  }
+  return fields.answer.value || '';
+}
+
+function saveCurrentPageAnswers() {
+  if (totalPages <= 1) return;
+  const stored = readStoredAnswers();
+  getAnswerGroups().forEach(fields => {
+    if (!fields.item_id || !fields.exercise_type) return;
+    stored[fields.item_id.value] = {
+      item_id: fields.item_id.value,
+      exercise_type: fields.exercise_type.value,
+      answer: getAnswerValue(fields),
+    };
+  });
+  writeStoredAnswers(stored);
+}
+
+function restoreCurrentPageAnswers() {
+  if (totalPages <= 1) return;
+  const stored = readStoredAnswers();
+  getAnswerGroups().forEach(fields => {
+    if (!fields.item_id) return;
+    const saved = stored[fields.item_id.value];
+    if (!saved || !fields.answer) return;
+    if (fields.answer.type === 'radio') {
+      document.querySelectorAll(`[name="${fields.answer.name}"]`).forEach(radio => {
+        radio.checked = radio.value === saved.answer;
+      });
+    } else {
+      fields.answer.value = saved.answer || '';
+    }
+  });
+}
+
+function appendHiddenInput(form, name, value) {
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = name;
+  input.value = value || '';
+  form.appendChild(input);
+}
+
+function appendStoredAnswersForSubmit() {
+  if (!exerciseForm || totalPages <= 1) return;
+  if (page === totalPages) {
+  saveCurrentPageAnswers();
+  const storedAnswers = Object.values(readStoredAnswers());
+  document.querySelectorAll('[name^="answers["]').forEach(input => {
+    input.disabled = true;
+  });
+  storedAnswers.forEach((answer, index) => {
+    appendHiddenInput(exerciseForm, `answers[${index}][item_id]`, answer.item_id);
+    appendHiddenInput(exerciseForm, `answers[${index}][exercise_type]`, answer.exercise_type);
+    appendHiddenInput(exerciseForm, `answers[${index}][answer]`, answer.answer);
+  });
+  setTimeout(() => sessionStorage.removeItem(answerStorageKey), 0);
+  }
+}
+
+document.querySelectorAll('.js-page-link').forEach(link => {
+  link.addEventListener('click', event => {
+    if (exerciseForm && !exerciseForm.checkValidity()) {
+      event.preventDefault();
+      exerciseForm.reportValidity();
+      return;
+    }
+    saveCurrentPageAnswers();
+  });
+});
+
+if (exerciseForm) {
+  restoreCurrentPageAnswers();
+  exerciseForm.addEventListener('submit', appendStoredAnswersForSubmit);
+}
 
 function selectWord(el, idx) {
   const resultDiv = document.getElementById('sentence-result-' + idx);
