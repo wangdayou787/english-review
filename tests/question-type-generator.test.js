@@ -136,6 +136,15 @@ describe('configured question type generation', () => {
         hintText: 'Listen carefully.',
         displayOptions: {},
       },
+      {
+        code: 'translation_fill',
+        enabled: false,
+        weight: 0,
+        instructionText: '',
+        primaryActionText: '',
+        hintText: '',
+        displayOptions: {},
+      },
     ]);
 
     const item = queries.getItemById(db, wordId);
@@ -249,7 +258,7 @@ describe('configured question type generation', () => {
     expect(exercise.exercise_type).toBe('form_fill');
     expect(exercise.question).toBe('study');
     expect(exercise.correct_answer).toBe('studied');
-    expect(exercise.prompt_label).toBe('past_tense');
+    expect(exercise.prompt_label).toBe('过去式');
     db.close();
   });
 
