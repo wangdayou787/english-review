@@ -26,9 +26,11 @@ function parseJsonOrDefault(value, fallback) {
   }
 }
 
-function mapQuestionTypeToExerciseType(questionType, item) {
+function mapQuestionTypeToExerciseType(questionType, item, options = {}) {
   switch (questionType.code) {
-    case 'vocab_en_cn_choice': return item.type === 'word' ? 'en2cn' : null;
+    case 'vocab_en_cn_choice':
+      if (item.type !== 'word' && item.type !== 'phrase') return null;
+      return (options.random || Math.random)() < 0.5 ? 'en2cn' : 'cn2en_choice';
     case 'vocab_spelling_fill': return item.type === 'word' ? 'spelling_fill' : null;
     case 'vocab_form_transform': return item.type === 'word' ? 'form_fill' : null;
     case 'vocab_listening_choice': return item.type === 'word' || item.type === 'phrase' ? 'listening' : null;
@@ -84,7 +86,7 @@ function getQuestionTypeCandidates(item, db) {
        JOIN question_types ON question_types.code = question_type_settings.question_type_code`
     ).all()
       .map(row => row.code)
-      .filter(code => mapQuestionTypeToExerciseType({ code }, item) !== null)
+      .filter(code => mapQuestionTypeToExerciseType({ code }, item, { random: () => 0 }) !== null)
   );
   const seen = new Set();
   const deduped = candidates.filter(candidate => {
@@ -158,7 +160,7 @@ function pickWeightedQuestionType(questionTypes, random = Math.random) {
 function pickConfiguredQuestionType(item, db, support, options = {}) {
   if (!db || typeof db.prepare !== 'function') return null;
   const candidates = getQuestionTypeCandidates(item, db)
-    .filter(type => mapQuestionTypeToExerciseType(type, item))
+    .filter(type => mapQuestionTypeToExerciseType(type, item, { random: () => 0 }))
     .filter(type => isConfiguredTypeUsable(type, item, support));
   return pickWeightedQuestionType(candidates, options.random || Math.random);
 }

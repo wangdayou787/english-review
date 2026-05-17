@@ -14,14 +14,15 @@ function pickFallbackExerciseType(item) {
   return types[Math.floor(Math.random() * types.length)];
 }
 
-function getDistractors(item, db) {
-  const seen = new Set([item.chinese]);
+function getDistractors(item, db, answerField = 'chinese') {
+  const seen = new Set([item[answerField]]);
   const distractors = [];
 
   function addRows(rows) {
     for (const row of rows) {
-      if (!row.chinese || seen.has(row.chinese)) continue;
-      seen.add(row.chinese);
+      const answer = row[answerField];
+      if (!answer || seen.has(answer)) continue;
+      seen.add(answer);
       distractors.push(row);
       if (distractors.length === 3) break;
     }
@@ -40,9 +41,9 @@ function getDistractors(item, db) {
   return distractors;
 }
 
-function buildOptions(distractors, item) {
-  const options = [...new Set([...distractors.map(d => d.chinese), item.chinese].filter(Boolean))];
-  return options.sort(() => Math.random() - 0.5);
+function buildOptions(distractors, item, answerField = 'chinese') {
+  const options = [...new Set([...distractors.map(d => d[answerField]), item[answerField]].filter(Boolean))];
+  return shuffle(options);
 }
 
 function shuffle(values) {
@@ -78,6 +79,13 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
         question: item.english,
         correct_answer: item.chinese,
         options: buildOptions(getDistractors(item, db), item),
+      };
+    case 'cn2en_choice':
+      return {
+        ...base,
+        question: item.chinese,
+        correct_answer: item.english,
+        options: buildOptions(getDistractors(item, db, 'english'), item, 'english'),
       };
     case 'cn2en':
       return { ...base, question: item.chinese, correct_answer: item.english };

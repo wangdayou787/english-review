@@ -16,7 +16,7 @@ function generateExercises(items, db, options = {}) {
     const support = getSinglePointSupport(item, db);
     const configuredType = pickConfiguredQuestionType(item, db, support, options);
     if (configuredType) {
-      const exerciseType = mapQuestionTypeToExerciseType(configuredType, item);
+      const exerciseType = mapQuestionTypeToExerciseType(configuredType, item, options);
       if (exerciseType) {
         return createExercise(item, exerciseType, db, {
           question_type_code: configuredType.code,

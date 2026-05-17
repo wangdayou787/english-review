@@ -235,6 +235,37 @@ describe('engine/generator.js', () => {
     smallDb.close();
   });
 
+  test('cn2en choice exercises use English options and include the correct word', () => {
+    const items = queries.getItemsByUnit(db, 1).filter(i => i.type === 'word').slice(0, 4);
+    const item = items[0];
+
+    const exercise = generator.createExercise(item, 'cn2en_choice', db);
+
+    expect(exercise.exercise_type).toBe('cn2en_choice');
+    expect(exercise.question).toBe(item.chinese);
+    expect(exercise.correct_answer).toBe(item.english);
+    expect(exercise.options).toContain(item.english);
+    expect(exercise.options).not.toContain(item.chinese);
+    expect(new Set(exercise.options).size).toBe(exercise.options.length);
+  });
+
+  test('translation choice question type can choose Chinese-to-English direction', () => {
+    const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'word');
+    db.prepare('UPDATE question_type_settings SET enabled = 0').run();
+    db.prepare(
+      `INSERT INTO question_type_settings (question_type_code, enabled, weight, instruction_text, primary_action_text, hint_text, display_options)
+       VALUES ('vocab_en_cn_choice', 1, 100, '选择正确答案。', '提交答案', '注意词义。', '{}')
+       ON CONFLICT(question_type_code) DO UPDATE SET enabled = excluded.enabled, weight = excluded.weight`
+    ).run();
+
+    const exercise = generator.generateExercises([item], db, { random: () => 0.75 })[0];
+
+    expect(exercise.exercise_type).toBe('cn2en_choice');
+    expect(exercise.question).toBe(item.chinese);
+    expect(exercise.correct_answer).toBe(item.english);
+    expect(exercise.options).toContain(item.english);
+  });
+
   test('sentence exercise splits example into words for ordering', () => {
     const item = queries.getItemsByUnit(db, 1).find(i => i.type === 'grammar');
     const ex = generator.createExercise(item, 'sentence', db);
