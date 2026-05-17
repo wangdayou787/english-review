@@ -35,11 +35,23 @@ describe('review template safety', () => {
   test('question type settings updates selected count without inline handlers', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 
-    expect(questionTypes).toContain('id="available-type-count"');
+    expect(questionTypes).toContain('data-available-count');
     expect(questionTypes).toContain('data-question-type-enabled');
     expect(questionTypes).toContain('question-type-selected');
     expect(questionTypes).toContain("addEventListener('change'");
     expect(questionTypes).not.toContain('onchange=');
+  });
+
+  test('question type settings tabs synchronize mirrored controls without duplicate forms', () => {
+    const questionTypes = read('views/admin/question-types.ejs');
+
+    expect(questionTypes).toContain('data-question-type-tab');
+    expect(questionTypes).toContain('data-question-type-panel');
+    expect(questionTypes).toContain('data-canonical-code');
+    expect(questionTypes).toContain('data-mirror-enabled');
+    expect(questionTypes).toContain('syncMirroredCards');
+    expect(questionTypes).toContain("addEventListener('click'");
+    expect(questionTypes).not.toContain('onclick=');
   });
 
   test('stats mastered items use a passive chip class', () => {

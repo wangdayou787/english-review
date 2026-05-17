@@ -364,6 +364,38 @@
   gap: 1rem;
 }
 
+.question-type-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.question-type-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.35rem;
+  padding: 0.45rem 1rem;
+}
+
+.question-type-tab.active {
+  background: #e8f0fe;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.question-type-tab-panel {
+  display: none;
+}
+
+.question-type-tab-panel.active {
+  display: block;
+}
+
 .question-type-region-primary {
   border-color: #9cc7a8;
   box-shadow: 0 1px 0 rgba(37, 99, 66, 0.08);

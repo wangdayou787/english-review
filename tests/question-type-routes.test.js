@@ -96,11 +96,66 @@ describe('admin question type settings routes', () => {
     const res = await requestApp(app, 'GET', '/admin/question-types');
 
     expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('id="available-type-count"');
-    expect(res.text).toContain('8 个题型，选用 8 个');
-    expect(res.text).toContain('data-question-type-card="vocab_en_cn_choice"');
+    expect(res.text).toContain('data-available-count');
+    expect(res.text).toContain('data-total-count="5"');
+    expect(res.text).toContain('data-question-type-card="word-vocab_en_cn_choice"');
     expect(res.text).toContain('question-type-selected');
     expect(res.text).toContain('选用此题型');
+
+    app.cleanup();
+  });
+
+  test('question type settings groups core types by review content tabs', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/question-types');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('data-question-type-tab="word"');
+    expect(res.text).toContain('data-question-type-tab="phrase"');
+    expect(res.text).toContain('data-question-type-tab="grammar"');
+    expect(res.text).toContain('单词');
+    expect(res.text).toContain('词组');
+    expect(res.text).toContain('语法');
+    expect(res.text).toContain('data-question-type-panel="word"');
+    expect(res.text).toContain('data-question-type-panel="phrase"');
+    expect(res.text).toContain('data-question-type-panel="grammar"');
+    expect(res.text).toContain('data-content-type="word"');
+    expect(res.text).toContain('data-content-type="phrase"');
+    expect(res.text).toContain('data-content-type="grammar"');
+
+    app.cleanup();
+  });
+
+  test('question type settings hides cloze reading and passage-only future types', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/question-types');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).not.toContain('标准短文完形');
+    expect(res.text).not.toContain('短文选词完形');
+    expect(res.text).not.toContain('判断正误阅读');
+    expect(res.text).not.toContain('阅读理解选择题');
+    expect(res.text).not.toContain('任务型阅读');
+    expect(res.text).not.toContain('补全对话');
+
+    app.cleanup();
+  });
+
+  test('question type settings submits each available question type only once', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const res = await requestApp(app, 'GET', '/admin/question-types');
+
+    expect(res.statusCode).toBe(200);
+    const codeInputs = [...res.text.matchAll(/name="settings\[\d+\]\[code\]" value="([^"]+)"/g)]
+      .map(match => match[1]);
+    const uniqueCodes = new Set(codeInputs);
+
+    expect(codeInputs).toHaveLength(uniqueCodes.size);
+    expect(codeInputs).toContain('vocab_en_cn_choice');
+    expect(codeInputs).toContain('translation_fill');
+    expect(codeInputs).toContain('vocab_listening_choice');
+    expect(codeInputs.filter(code => code === 'translation_fill')).toHaveLength(1);
+    expect(codeInputs.filter(code => code === 'vocab_listening_choice')).toHaveLength(1);
 
     app.cleanup();
   });

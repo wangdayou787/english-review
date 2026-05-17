@@ -76,26 +76,61 @@ router.get('/admin/question-types', (req, res) => {
     '题型设置'
   );
 });
+
+const QUESTION_TYPE_CONTENT_TABS = [
+  { key: 'word', label: '单词' },
+  { key: 'phrase', label: '词组' },
+  { key: 'grammar', label: '语法' },
+];
+
+function getSupportedItemTypes(type) {
+  return Array.isArray(type.supported_item_types) ? type.supported_item_types : [];
+}
+
 function getQuestionTypeSettingsViewData(db, { error = null, success = null } = {}) {
   const groups = queries.getQuestionTypeGroups(db);
-  const availableTypes = [];
-  const plannedTypes = [];
+  const allTypes = groups.flatMap(group => group.types.map(type => ({
+    ...type,
+    category_label: group.label,
+  })));
+  const tabKeys = QUESTION_TYPE_CONTENT_TABS.map(tab => tab.key);
+  const coreTypes = allTypes.filter(type =>
+    getSupportedItemTypes(type).some(itemType => tabKeys.includes(itemType))
+  );
+  const canonicalAvailableTypes = [];
+  const seenAvailableCodes = new Set();
 
-  groups.forEach(group => {
-    group.types.forEach(type => {
-      const viewType = {
-        ...type,
-        category_label: group.label,
-      };
-      if (type.implementation_status === 'available') {
-        availableTypes.push(viewType);
-      } else {
-        plannedTypes.push(viewType);
-      }
+  coreTypes.forEach(type => {
+    if (type.implementation_status !== 'available') return;
+    if (seenAvailableCodes.has(type.code)) return;
+    seenAvailableCodes.add(type.code);
+    const supportedCoreTypes = getSupportedItemTypes(type).filter(itemType => tabKeys.includes(itemType));
+    canonicalAvailableTypes.push({
+      ...type,
+      canonical_content_type: supportedCoreTypes[0],
     });
   });
 
-  return { availableTypes, plannedTypes, error, success };
+  const canonicalContentByCode = new Map(
+    canonicalAvailableTypes.map(type => [type.code, type.canonical_content_type])
+  );
+
+  const contentTabs = QUESTION_TYPE_CONTENT_TABS.map(tab => ({
+    ...tab,
+    availableTypes: coreTypes
+      .filter(type =>
+        type.implementation_status === 'available' && getSupportedItemTypes(type).includes(tab.key)
+      )
+      .map(type => ({
+        ...type,
+        canonical_content_type: canonicalContentByCode.get(type.code),
+      })),
+    plannedTypes: coreTypes.filter(type =>
+      type.implementation_status !== 'available' && getSupportedItemTypes(type).includes(tab.key)
+    ),
+  }));
+
+  return { contentTabs, canonicalAvailableTypes, error, success };
 }
 function normalizeQuestionTypeSettings(rawSettings) {
   const settingsArray = Array.isArray(rawSettings) ? rawSettings : rawSettings ? Object.values(rawSettings) : [];

@@ -9,155 +9,234 @@
 
 <section class="panel mb-2">
   <h2 class="mb-1">题型生成规则</h2>
-  <p class="text-muted">只有“可用于练习”并已启用的题型会进入学生练习；“后续支持”的题型只展示规划方向，当前不会生成到学生端。</p>
+  <p class="text-muted">只有“可用于练习”并已选用的题型会进入学生练习；“后续支持”的题型只展示规划方向，当前不会生成到学生端。</p>
 </section>
 
 <form method="POST" action="/admin/question-types" class="question-type-settings">
-  <% const selectedAvailableTypeCount = availableTypes.filter(type => type.enabled).length; %>
-  <section class="panel question-type-region question-type-region-primary mb-2">
-    <div class="question-type-region-header">
-      <div>
-        <h2>可用于练习</h2>
-        <p class="text-muted">当前已经支持生成和判分的题型。</p>
-      </div>
-      <span
-        id="available-type-count"
-        class="status-pill status-available"
-        data-total-count="<%= availableTypes.length %>"
-      ><%= availableTypes.length %> 个题型<%= selectedAvailableTypeCount > 0 ? '，选用 ' + selectedAvailableTypeCount + ' 个' : '' %></span>
-    </div>
+  <% const canonicalCodes = canonicalAvailableTypes.map(type => type.code); %>
+  <div class="question-type-tabs" role="tablist" aria-label="题型内容分类">
+    <% contentTabs.forEach((tab, tabIndex) => { %>
+      <button
+        type="button"
+        class="question-type-tab <%= tabIndex === 0 ? 'active' : '' %>"
+        role="tab"
+        aria-selected="<%= tabIndex === 0 ? 'true' : 'false' %>"
+        data-question-type-tab="<%= tab.key %>"
+      ><%= tab.label %></button>
+    <% }) %>
+  </div>
 
-    <% if (availableTypes.length === 0) { %>
-      <p class="text-muted">暂无可用于练习的题型</p>
-    <% } %>
-
-    <div class="question-type-list">
-      <% availableTypes.forEach((type, index) => { %>
-        <details
-          class="question-type-card question-type-details <%= type.enabled ? 'question-type-selected' : '' %>"
-          data-question-type-card="<%= type.code %>"
-        >
-          <summary class="question-type-summary">
-            <span>
-              <strong><%= type.name %></strong>
-              <small><%= type.category_label %> · <%= type.description %></small>
-            </span>
-            <span class="status-pill status-available">可用于练习</span>
-          </summary>
-
-          <div class="question-type-detail-body">
-            <input type="hidden" name="settings[<%= index %>][code]" value="<%= type.code %>">
-
-            <label class="check-row">
-              <input
-                type="checkbox"
-                name="settings[<%= index %>][enabled]"
-                data-question-type-enabled
-                data-question-type-code="<%= type.code %>"
-                <%= type.enabled ? 'checked' : '' %>
-              >
-              <span>选用此题型</span>
-            </label>
-
-            <div class="form-group">
-              <label>比例权重</label>
-              <input type="number" min="0" max="100" name="settings[<%= index %>][weight]" value="<%= type.weight %>">
-            </div>
-
-            <div class="form-group">
-              <label>题目说明文案</label>
-              <input type="text" name="settings[<%= index %>][instructionText]" value="<%= type.instruction_text %>">
-            </div>
-
-            <div class="form-group">
-              <label>按钮文案</label>
-              <input type="text" name="settings[<%= index %>][primaryActionText]" value="<%= type.primary_action_text %>">
-            </div>
-
-            <div class="form-group">
-              <label>提示文案</label>
-              <input type="text" name="settings[<%= index %>][hintText]" value="<%= type.hint_text %>">
-            </div>
-
-            <div class="display-option-grid">
-              <label class="check-row">
-                <input type="checkbox" name="settings[<%= index %>][showExample]" <%= type.display_options.showExample ? 'checked' : '' %>>
-                <span>显示例句</span>
-              </label>
-              <label class="check-row">
-                <input type="checkbox" name="settings[<%= index %>][showPartOfSpeech]" <%= type.display_options.showPartOfSpeech ? 'checked' : '' %>>
-                <span>显示词性</span>
-              </label>
-              <label class="check-row">
-                <input type="checkbox" name="settings[<%= index %>][showChineseMeaning]" <%= type.display_options.showChineseMeaning ? 'checked' : '' %>>
-                <span>显示中文释义</span>
-              </label>
-              <label class="check-row">
-                <input type="checkbox" name="settings[<%= index %>][showFirstLetterHint]" <%= type.display_options.showFirstLetterHint ? 'checked' : '' %>>
-                <span>显示首字母提示</span>
-              </label>
-            </div>
+  <% contentTabs.forEach((tab, tabIndex) => { %>
+    <section
+      class="question-type-tab-panel <%= tabIndex === 0 ? 'active' : '' %>"
+      data-question-type-panel="<%= tab.key %>"
+      data-content-type="<%= tab.key %>"
+    >
+      <section class="panel question-type-region question-type-region-primary mb-2">
+        <div class="question-type-region-header">
+          <div>
+            <h2><%= tab.label %> · 可用于练习</h2>
+            <p class="text-muted">当前已经支持生成和判分的<%= tab.label %>题型。</p>
           </div>
-        </details>
-      <% }) %>
-    </div>
-  </section>
+          <span
+            class="status-pill status-available"
+            data-available-count
+            data-content-type="<%= tab.key %>"
+            data-total-count="<%= tab.availableTypes.length %>"
+          ></span>
+        </div>
+
+        <% if (tab.availableTypes.length === 0) { %>
+          <p class="text-muted">暂无可用于练习的<%= tab.label %>题型</p>
+        <% } %>
+
+        <div class="question-type-list">
+          <% tab.availableTypes.forEach(type => { %>
+            <% const canonicalIndex = canonicalCodes.indexOf(type.code); %>
+            <% const isCanonical = type.canonical_content_type === tab.key; %>
+            <details
+              class="question-type-card question-type-details <%= type.enabled ? 'question-type-selected' : '' %>"
+              data-question-type-card="<%= tab.key %>-<%= type.code %>"
+              data-question-type-code="<%= type.code %>"
+            >
+              <summary class="question-type-summary">
+                <span>
+                  <strong><%= type.name %></strong>
+                  <small><%= type.category_label %> · <%= type.description %></small>
+                </span>
+                <span class="status-pill status-available">可用于练习</span>
+              </summary>
+
+              <div class="question-type-detail-body">
+                <% if (isCanonical) { %>
+                  <input type="hidden" name="settings[<%= canonicalIndex %>][code]" value="<%= type.code %>">
+
+                  <label class="check-row">
+                    <input
+                      type="checkbox"
+                      name="settings[<%= canonicalIndex %>][enabled]"
+                      data-question-type-enabled
+                      data-canonical-code="<%= type.code %>"
+                      <%= type.enabled ? 'checked' : '' %>
+                    >
+                    <span>选用此题型</span>
+                  </label>
+
+                  <div class="form-group">
+                    <label>比例权重</label>
+                    <input type="number" min="0" max="100" name="settings[<%= canonicalIndex %>][weight]" value="<%= type.weight %>">
+                  </div>
+
+                  <div class="form-group">
+                    <label>题目说明文案</label>
+                    <input type="text" name="settings[<%= canonicalIndex %>][instructionText]" value="<%= type.instruction_text %>">
+                  </div>
+
+                  <div class="form-group">
+                    <label>按钮文案</label>
+                    <input type="text" name="settings[<%= canonicalIndex %>][primaryActionText]" value="<%= type.primary_action_text %>">
+                  </div>
+
+                  <div class="form-group">
+                    <label>提示文案</label>
+                    <input type="text" name="settings[<%= canonicalIndex %>][hintText]" value="<%= type.hint_text %>">
+                  </div>
+
+                  <div class="display-option-grid">
+                    <label class="check-row">
+                      <input type="checkbox" name="settings[<%= canonicalIndex %>][showExample]" <%= type.display_options.showExample ? 'checked' : '' %>>
+                      <span>显示例句</span>
+                    </label>
+                    <label class="check-row">
+                      <input type="checkbox" name="settings[<%= canonicalIndex %>][showPartOfSpeech]" <%= type.display_options.showPartOfSpeech ? 'checked' : '' %>>
+                      <span>显示词性</span>
+                    </label>
+                    <label class="check-row">
+                      <input type="checkbox" name="settings[<%= canonicalIndex %>][showChineseMeaning]" <%= type.display_options.showChineseMeaning ? 'checked' : '' %>>
+                      <span>显示中文释义</span>
+                    </label>
+                    <label class="check-row">
+                      <input type="checkbox" name="settings[<%= canonicalIndex %>][showFirstLetterHint]" <%= type.display_options.showFirstLetterHint ? 'checked' : '' %>>
+                      <span>显示首字母提示</span>
+                    </label>
+                  </div>
+                <% } else { %>
+                  <label class="check-row">
+                    <input
+                      type="checkbox"
+                      data-mirror-enabled
+                      data-canonical-code="<%= type.code %>"
+                      <%= type.enabled ? 'checked' : '' %>
+                    >
+                    <span>选用此题型</span>
+                  </label>
+                  <p class="text-muted mb-0">此题型设置与其他内容分类共用，保存时只提交一份配置。</p>
+                <% } %>
+              </div>
+            </details>
+          <% }) %>
+        </div>
+      </section>
+
+      <section class="panel question-type-region mb-2">
+        <div class="question-type-region-header">
+          <div>
+            <h2><%= tab.label %> · 后续支持</h2>
+            <p class="text-muted">后续规划题型，目前只展示名称和待做事项。</p>
+          </div>
+          <span class="status-pill status-planned"><%= tab.plannedTypes.length %> 个题型</span>
+        </div>
+
+        <% if (tab.plannedTypes.length === 0) { %>
+          <p class="text-muted">暂无后续支持题型</p>
+        <% } %>
+
+        <div class="question-type-list">
+          <% tab.plannedTypes.forEach(type => { %>
+            <details class="question-type-card question-type-details">
+              <summary class="question-type-summary">
+                <span>
+                  <strong><%= type.name %></strong>
+                  <small><%= type.category_label %> · <%= type.description %></small>
+                </span>
+                <span class="status-pill status-planned">后续支持</span>
+              </summary>
+              <div class="question-type-detail-body">
+                <p class="text-muted mb-0"><%= type.description %></p>
+              </div>
+            </details>
+          <% }) %>
+        </div>
+      </section>
+    </section>
+  <% }) %>
 
   <button type="submit" class="btn btn-primary">保存题型设置</button>
 </form>
 
-<section class="panel question-type-region mb-2">
-  <div class="question-type-region-header">
-    <div>
-      <h2>后续支持</h2>
-      <p class="text-muted">后续规划题型，目前只展示名称和待做事项。</p>
-    </div>
-    <span class="status-pill status-planned"><%= plannedTypes.length %> 个题型</span>
-  </div>
-
-  <% if (plannedTypes.length === 0) { %>
-    <p class="text-muted">暂无后续支持题型</p>
-  <% } %>
-
-  <div class="question-type-list">
-    <% plannedTypes.forEach(type => { %>
-      <details class="question-type-card question-type-details">
-        <summary class="question-type-summary">
-          <span>
-            <strong><%= type.name %></strong>
-            <small><%= type.category_label %> · <%= type.description %></small>
-          </span>
-          <span class="status-pill status-planned">后续支持</span>
-        </summary>
-        <div class="question-type-detail-body">
-          <p class="text-muted mb-0"><%= type.description %></p>
-        </div>
-      </details>
-    <% }) %>
-  </div>
-</section>
-
 <script>
-const availableTypeCount = document.getElementById('available-type-count');
-const enabledTypeInputs = document.querySelectorAll('[data-question-type-enabled]');
+const questionTypeTabs = document.querySelectorAll('[data-question-type-tab]');
+const questionTypePanels = document.querySelectorAll('[data-question-type-panel]');
+const canonicalInputs = document.querySelectorAll('[data-question-type-enabled]');
+const mirrorInputs = document.querySelectorAll('[data-mirror-enabled]');
+const countPills = document.querySelectorAll('[data-available-count]');
 
-function updateAvailableTypeSelection() {
-  if (!availableTypeCount) return;
-  const total = Number(availableTypeCount.dataset.totalCount || enabledTypeInputs.length);
-  const selected = Array.from(enabledTypeInputs).filter(input => input.checked).length;
-  availableTypeCount.textContent = selected > 0
-    ? `${total} 个题型，选用 ${selected} 个`
-    : `${total} 个题型`;
-
-  enabledTypeInputs.forEach(input => {
-    const card = document.querySelector(`[data-question-type-card="${input.dataset.questionTypeCode}"]`);
-    if (card) {
-      card.classList.toggle('question-type-selected', input.checked);
-    }
+function setActiveQuestionTypeTab(tabKey) {
+  questionTypeTabs.forEach(tab => {
+    const active = tab.dataset.questionTypeTab === tabKey;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  questionTypePanels.forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.questionTypePanel === tabKey);
   });
 }
 
-enabledTypeInputs.forEach(input => {
-  input.addEventListener('change', updateAvailableTypeSelection);
+function isTypeEnabled(code) {
+  const input = document.querySelector(`[data-question-type-enabled][data-canonical-code="${code}"]`);
+  return input ? input.checked : false;
+}
+
+function syncMirroredCards() {
+  document.querySelectorAll('[data-question-type-code]').forEach(card => {
+    card.classList.toggle('question-type-selected', isTypeEnabled(card.dataset.questionTypeCode));
+  });
+  mirrorInputs.forEach(input => {
+    input.checked = isTypeEnabled(input.dataset.canonicalCode);
+  });
+}
+
+function updateAvailableTypeCounts() {
+  countPills.forEach(pill => {
+    const panel = pill.closest('[data-question-type-panel]');
+    const cards = panel ? panel.querySelectorAll('[data-question-type-code]') : [];
+    const selected = Array.from(cards).filter(card => isTypeEnabled(card.dataset.questionTypeCode)).length;
+    const total = Number(pill.dataset.totalCount || cards.length);
+    pill.textContent = selected > 0
+      ? `${total} 个题型，选用 ${selected} 个`
+      : `${total} 个题型`;
+  });
+}
+
+function updateQuestionTypeSelection() {
+  syncMirroredCards();
+  updateAvailableTypeCounts();
+}
+
+questionTypeTabs.forEach(tab => {
+  tab.addEventListener('click', () => setActiveQuestionTypeTab(tab.dataset.questionTypeTab));
 });
+canonicalInputs.forEach(input => {
+  input.addEventListener('change', updateQuestionTypeSelection);
+});
+mirrorInputs.forEach(input => {
+  input.addEventListener('change', () => {
+    const canonical = document.querySelector(`[data-question-type-enabled][data-canonical-code="${input.dataset.canonicalCode}"]`);
+    if (canonical) {
+      canonical.checked = input.checked;
+      updateQuestionTypeSelection();
+    }
+  });
+});
+updateQuestionTypeSelection();
 </script>
