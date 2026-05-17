@@ -32,6 +32,20 @@ describe('review template safety', () => {
     expect(exercise).toContain('spellcheck="false"');
   });
 
+  test('practice exercises do not render bottom hint text', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).not.toContain('exercise-hint');
+    expect(exercise).not.toContain('ex.hint_text');
+  });
+
+  test('question type settings no longer exposes hint text inputs', () => {
+    const questionTypes = read('views/admin/question-types.ejs');
+
+    expect(questionTypes).not.toContain('[hintText]');
+    expect(questionTypes).not.toContain('type.hint_text');
+  });
+
   test('question type settings updates selected count without inline handlers', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 
