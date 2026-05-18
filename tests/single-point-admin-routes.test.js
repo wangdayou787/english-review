@@ -570,6 +570,43 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('admin edit saves grammar details and examples', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'grammar');
+
+    const res = await requestApp(app, 'POST', `/admin/items/${itemId}/edit`, {
+      type: 'grammar',
+      english: 'Present continuous',
+      chinese: '现在进行时',
+      pos: '',
+      example: '',
+      'grammar_detail[title]': '现在进行时',
+      'grammar_detail[description]': '表示正在发生的动作。',
+      'grammar_detail[usage_notes]': '常与 look 和 now 连用。',
+      'grammar_examples[0][example_type]': 'choice',
+      'grammar_examples[0][prompt_text]': 'Look! The children ____ football.',
+      'grammar_examples[0][options_text]': 'play\nplays\nare playing\nplayed',
+      'grammar_examples[0][answer_text]': 'are playing',
+      'grammar_examples[0][explanation]': 'Look 表示正在发生，所以用 are playing。',
+      'grammar_examples[1][example_type]': 'sentence_transform',
+      'grammar_examples[1][prompt_text]': 'She can speak French. 改为否定句',
+      'grammar_examples[1][options_text]': '',
+      'grammar_examples[1][answer_text]': 'She cannot speak French.',
+      'grammar_examples[1][explanation]': '情态动词 can 的否定形式是 cannot。',
+    });
+
+    expect(res.statusCode).toBe(302);
+    const detail = queries.getGrammarDetails(app.locals.db, itemId);
+    const examples = queries.getGrammarExamplesByItem(app.locals.db, itemId);
+    expect(detail.title).toBe('现在进行时');
+    expect(detail.description).toBe('表示正在发生的动作。');
+    expect(examples).toHaveLength(2);
+    expect(examples[0].options).toEqual(['play', 'plays', 'are playing', 'played']);
+    expect(examples[1].example_type).toBe('sentence_transform');
+
+    app.cleanup();
+  });
+
   test('admin edit does not save incomplete sentence order details', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId } = seedItem(app.locals.db, 'grammar');

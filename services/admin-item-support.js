@@ -13,6 +13,8 @@ const WORD_INFLECTION_FIELDS = [
   'noun',
 ];
 
+const GRAMMAR_EXAMPLE_TYPES = new Set(['choice', 'completion', 'sentence_transform']);
+
 function normalizeWordQuestionDetails(raw) {
   return {
     baseForm: raw?.base_form || '',
@@ -58,6 +60,37 @@ function normalizeSentenceOrderDetail(raw) {
   };
 }
 
+function normalizeOptionsText(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map(option => option.trim())
+    .filter(Boolean);
+}
+
+function normalizeGrammarDetails(raw) {
+  return {
+    title: String(raw?.title || '').trim(),
+    description: String(raw?.description || '').trim(),
+    usageNotes: String(raw?.usage_notes || '').trim(),
+  };
+}
+
+function normalizeGrammarExampleRows(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
+  return rows.map(row => ({
+    exampleType: String(row?.example_type || '').trim(),
+    promptText: String(row?.prompt_text || '').trim(),
+    options: normalizeOptionsText(row?.options_text),
+    answerText: String(row?.answer_text || '').trim(),
+    explanation: String(row?.explanation || '').trim(),
+  })).filter(row => (
+    GRAMMAR_EXAMPLE_TYPES.has(row.exampleType) &&
+    row.promptText &&
+    row.answerText &&
+    (row.exampleType !== 'choice' || row.options.length >= 2)
+  ));
+}
+
 function draftPhraseChoiceRows(rawRows) {
   const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
   return rows.map((row) => ({
@@ -80,6 +113,25 @@ function draftSentenceOrderDetail(raw) {
   };
 }
 
+function draftGrammarDetails(raw) {
+  return {
+    title: String(raw?.title || ''),
+    description: String(raw?.description || ''),
+    usage_notes: String(raw?.usage_notes || ''),
+  };
+}
+
+function draftGrammarExamples(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows : rawRows ? Object.values(rawRows) : [];
+  return rows.map(row => ({
+    example_type: String(row?.example_type || ''),
+    prompt_text: String(row?.prompt_text || ''),
+    options_text: String(row?.options_text || ''),
+    answer_text: String(row?.answer_text || ''),
+    explanation: String(row?.explanation || ''),
+  }));
+}
+
 function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
   return db.prepare(
     'SELECT * FROM phrase_choice_questions WHERE id = ? AND item_id = ?'
@@ -91,6 +143,8 @@ function getItemSupportViewData(db, itemId) {
     wordQuestionDetail: queries.getWordQuestionDetails(db, itemId),
     phraseChoiceQuestions: queries.getPhraseChoiceQuestionsByItem(db, itemId),
     sentenceOrderDetail: queries.getSentenceOrderDetails(db, itemId),
+    grammarDetail: queries.getGrammarDetails(db, itemId),
+    grammarExamples: queries.getGrammarExamplesByItem(db, itemId),
   };
 }
 
@@ -110,6 +164,12 @@ function getDraftSupportViewData(db, itemId, body) {
     sentenceOrderDetail: body.sentence_order
       ? draftSentenceOrderDetail(body.sentence_order)
       : queries.getSentenceOrderDetails(db, itemId),
+    grammarDetail: body.grammar_detail
+      ? draftGrammarDetails(body.grammar_detail)
+      : queries.getGrammarDetails(db, itemId),
+    grammarExamples: body.grammar_examples
+      ? draftGrammarExamples(body.grammar_examples)
+      : queries.getGrammarExamplesByItem(db, itemId),
   };
 }
 
@@ -117,6 +177,8 @@ function clearSupportData(db, itemId) {
   db.prepare('DELETE FROM word_question_details WHERE item_id = ?').run(itemId);
   db.prepare('DELETE FROM sentence_order_details WHERE item_id = ?').run(itemId);
   db.prepare('DELETE FROM phrase_choice_questions WHERE item_id = ?').run(itemId);
+  db.prepare('DELETE FROM grammar_details WHERE item_id = ?').run(itemId);
+  db.prepare('DELETE FROM grammar_examples WHERE item_id = ?').run(itemId);
 }
 
 function savePhraseChoiceRows(db, itemId, rawRows) {
@@ -161,8 +223,16 @@ function saveSupportData(db, itemId, type, body) {
   if (type === 'phrase' && body.phrase_choice) {
     savePhraseChoiceRows(db, itemId, body.phrase_choice);
   }
-  if (type === 'grammar' && body.sentence_order) {
-    saveSentenceOrderIfComplete(db, itemId, body.sentence_order);
+  if (type === 'grammar') {
+    if (body.grammar_detail) {
+      queries.saveGrammarDetails(db, itemId, normalizeGrammarDetails(body.grammar_detail));
+    }
+    if (body.grammar_examples) {
+      queries.replaceGrammarExamples(db, itemId, normalizeGrammarExampleRows(body.grammar_examples));
+    }
+    if (body.sentence_order) {
+      saveSentenceOrderIfComplete(db, itemId, body.sentence_order);
+    }
   }
 }
 

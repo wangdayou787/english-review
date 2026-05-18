@@ -220,7 +220,7 @@ router.post('/admin/units/:id/items', (req, res) => {
     const items = queries.getItemsByUnit(db, req.params.id);
     return renderWithLayout(res, 'admin/items', { textbook, unit, items, error: '英文和中文不能为空' }, unit.name);
   }
-  queries.createItem(db, {
+  const itemId = queries.createItem(db, {
     unitId: parseInt(req.params.id),
     type,
     english,
@@ -228,6 +228,7 @@ router.post('/admin/units/:id/items', (req, res) => {
     pos,
     example: normalizeExampleText(type, example, examples),
   });
+  saveSupportData(db, itemId, type, req.body);
   res.redirect(`/admin/units/${req.params.id}/items`);
 });
 router.post('/admin/items/batch', (req, res) => {
