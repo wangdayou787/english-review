@@ -74,8 +74,8 @@
   <form method="POST" action="/admin/items/batch" style="margin-top:0.5rem;">
     <input type="hidden" name="unit_id" value="<%= unit.id %>">
     <div class="form-group">
-      <label>每行一条，格式：英文 | 中文 | 类型 | 词性(可选) | 例句(可选)</label>
-      <textarea name="data" rows="6" placeholder="apple | 苹果 | word | 名词 | I like apples"></textarea>
+      <label>每行一条，支持：英文 | 中文 | 类型 | 词性(可选) | 例句(可选)，或单词格式：英文 | 音标 | 中文 | 词性(可选) | 例句(可选)</label>
+      <textarea name="data" rows="6" placeholder="apple | 苹果 | word | 名词 | I like apples&#10;director | dɪˈrektə | 导演 | n，名词 |"></textarea>
     </div>
     <button type="submit" class="btn btn-primary">批量导入</button>
   </form>

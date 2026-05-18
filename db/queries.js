@@ -90,7 +90,11 @@ function batchCreateItems(db, unitId, rows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const parts = row.split('|').map(s => s.trim());
-    const [english, chinese, type, pos, example] = parts;
+    const explicitType = parts[2];
+    const isExplicitType = ['word', 'phrase', 'grammar'].includes(explicitType);
+    const [english, chinese, type, pos, example] = isExplicitType
+      ? parts
+      : [parts[0], parts[2], 'word', parts[3], parts[4]];
 
     if (!type || !['word', 'phrase', 'grammar'].includes(type)) {
       errors.push(`第 ${i + 1} 行：类型无效 (${type})`);
