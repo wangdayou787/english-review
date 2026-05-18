@@ -23,15 +23,65 @@
       <option value="grammar">语法 (grammar)</option>
     </select>
   </div>
-  <div class="form-group"><input type="text" name="english" placeholder="英文"></div>
-  <div class="form-group"><input type="text" name="chinese" placeholder="中文释义"></div>
-  <div class="form-group"><input type="text" name="pos" placeholder="词性（可选）"></div>
-  <div class="form-group">
-    <label for="example">例句（可选）</label>
-    <input type="text" id="example" name="example" placeholder="例句（可选）">
-    <div id="extra-examples" class="mt-2"></div>
-    <button type="button" id="add-example-btn" class="btn btn-sm mt-2" hidden>增加例句</button>
+  <div data-type-panel="lexical">
+    <div class="form-group"><input type="text" name="english" placeholder="英文"></div>
+    <div class="form-group"><input type="text" name="chinese" placeholder="中文释义"></div>
+    <div class="form-group"><input type="text" name="pos" placeholder="词性（可选）"></div>
+    <div class="form-group">
+      <label for="example">例句（可选）</label>
+      <input type="text" id="example" name="example" placeholder="例句（可选）">
+      <div id="extra-examples" class="mt-2"></div>
+      <button type="button" id="add-example-btn" class="btn btn-sm mt-2" hidden>增加例句</button>
+    </div>
   </div>
+
+  <section data-type-panel="grammar" hidden>
+    <h3>语法知识结构</h3>
+    <div class="form-group">
+      <label>语法标题</label>
+      <input type="text" name="grammar_detail[title]" placeholder="例如：一般过去时">
+    </div>
+    <div class="form-group">
+      <label>语法说明</label>
+      <textarea name="grammar_detail[description]" rows="4" placeholder="说明这个语法点的核心用法"></textarea>
+    </div>
+    <div class="form-group">
+      <label>使用规则</label>
+      <textarea name="grammar_detail[usage_notes]" rows="3" placeholder="常见时间状语、结构、易错点等"></textarea>
+    </div>
+
+    <h3>语法例题</h3>
+    <div id="grammar-examples">
+      <div class="grammar-example-row" data-grammar-example-row>
+        <div class="form-group">
+          <label>例题类型</label>
+          <select name="grammar_examples[0][example_type]">
+            <option value="choice">单项选择</option>
+            <option value="completion">完成句子</option>
+            <option value="sentence_transform">句型转换</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>题干</label>
+          <textarea name="grammar_examples[0][prompt_text]" rows="3" placeholder="例如：He ____ (buy) a bike yesterday."></textarea>
+        </div>
+        <div class="form-group">
+          <label>选项，每行一个，只有单项选择需要填写</label>
+          <textarea name="grammar_examples[0][options_text]" rows="4" placeholder="A. buy&#10;B. buys&#10;C. bought&#10;D. buying"></textarea>
+        </div>
+        <div class="form-group">
+          <label>标准答案</label>
+          <input type="text" name="grammar_examples[0][answer_text]" placeholder="例如：bought">
+        </div>
+        <div class="form-group">
+          <label>例题解析</label>
+          <textarea name="grammar_examples[0][explanation]" rows="3" placeholder="说明这道题如何应用该语法点"></textarea>
+        </div>
+      </div>
+    </div>
+    <button type="button" id="add-grammar-example-btn" class="btn btn-sm mt-2">增加语法例题</button>
+  </section>
+
   <button type="submit" class="btn btn-primary">添加</button>
 </form>
 
@@ -39,10 +89,25 @@
 (() => {
   const typeSelect = document.getElementById('item-type');
   const addButton = document.getElementById('add-example-btn');
+  const addGrammarExampleButton = document.getElementById('add-grammar-example-btn');
   const extraExamples = document.getElementById('extra-examples');
+  const lexicalPanel = document.querySelector('[data-type-panel="lexical"]');
+  const grammarPanel = document.querySelector('[data-type-panel="grammar"]');
+  const grammarExamples = document.getElementById('grammar-examples');
 
-  function updateExampleControls() {
+  function setPanelDisabled(panel, disabled) {
+    panel.querySelectorAll('input, textarea, select, button').forEach((field) => {
+      field.disabled = disabled;
+    });
+  }
+
+  function updateTypePanels() {
     const isPhrase = typeSelect.value === 'phrase';
+    const isGrammar = typeSelect.value === 'grammar';
+    lexicalPanel.hidden = isGrammar;
+    grammarPanel.hidden = !isGrammar;
+    setPanelDisabled(lexicalPanel, isGrammar);
+    setPanelDisabled(grammarPanel, !isGrammar);
     addButton.hidden = !isPhrase;
     if (!isPhrase) {
       extraExamples.replaceChildren();
@@ -63,8 +128,24 @@
     input.focus();
   });
 
-  typeSelect.addEventListener('change', updateExampleControls);
-  updateExampleControls();
+  addGrammarExampleButton.addEventListener('click', () => {
+    const index = grammarExamples.querySelectorAll('[data-grammar-example-row]').length;
+    const source = grammarExamples.querySelector('[data-grammar-example-row]');
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll('input, textarea, select').forEach((field) => {
+      field.name = field.name.replace(/grammar_examples\[\d+\]/, `grammar_examples[${index}]`);
+      if (field.tagName === 'SELECT') {
+        field.value = 'choice';
+      } else {
+        field.value = '';
+      }
+    });
+    grammarExamples.appendChild(clone);
+    clone.querySelector('select').focus();
+  });
+
+  typeSelect.addEventListener('change', updateTypePanels);
+  updateTypePanels();
 })();
 </script>
 

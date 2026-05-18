@@ -317,6 +317,57 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('admin unit item page exposes grammar-specific add fields', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'grammar');
+
+    const res = await requestApp(app, 'GET', `/admin/units/${unitId}/items`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('data-type-panel="grammar"');
+    expect(res.text).toContain('name="grammar_detail[title]"');
+    expect(res.text).toContain('name="grammar_examples[0][example_type]"');
+    expect(res.text).toContain('语法知识结构');
+    expect(res.text).toContain('语法例题');
+
+    app.cleanup();
+  });
+
+  test('admin can add grammar item with details and example from unit item page', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const res = await requestApp(app, 'POST', `/admin/units/${unitId}/items`, {
+      type: 'grammar',
+      english: '',
+      chinese: '',
+      pos: '',
+      example: '',
+      'grammar_detail[title]': '一般过去时',
+      'grammar_detail[description]': '表示过去发生的动作。',
+      'grammar_detail[usage_notes]': '常与 yesterday 连用。',
+      'grammar_examples[0][example_type]': 'completion',
+      'grammar_examples[0][prompt_text]': 'He ____ (buy) a bike yesterday.',
+      'grammar_examples[0][options_text]': '',
+      'grammar_examples[0][answer_text]': 'bought',
+      'grammar_examples[0][explanation]': 'yesterday 表示一般过去时。',
+    });
+
+    const grammarItem = queries.getItemsByUnit(app.locals.db, unitId)
+      .find(item => item.type === 'grammar');
+    const detail = queries.getGrammarDetails(app.locals.db, grammarItem.id);
+    const examples = queries.getGrammarExamplesByItem(app.locals.db, grammarItem.id);
+
+    expect(res.statusCode).toBe(302);
+    expect(detail.title).toBe('一般过去时');
+    expect(detail.description).toBe('表示过去发生的动作。');
+    expect(examples).toHaveLength(1);
+    expect(examples[0].prompt_text).toBe('He ____ (buy) a bike yesterday.');
+    expect(examples[0].answer_text).toBe('bought');
+
+    app.cleanup();
+  });
+
   test('admin can save word question details from item edit', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId, unitId } = seedItem(app.locals.db, 'word');
