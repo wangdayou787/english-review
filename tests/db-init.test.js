@@ -408,7 +408,7 @@ describe('db/init.js â€?database initialization', () => {
     expect(new Set(codes).size).toBe(codes.length);
     expect(rows.some(row => row.category === 'vocabulary')).toBe(true);
     expect(rows.some(row => row.category === 'reading')).toBe(true);
-    expect(rows.find(row => row.code === 'grammar_choice').implementation_status).toBe('planned');
+    expect(rows.find(row => row.code === 'grammar_choice').implementation_status).toBe('available');
   });
 
   test('initDatabase seeds question type settings idempotently', () => {

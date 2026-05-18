@@ -9,6 +9,9 @@ const EXERCISE_TYPES = [
   'form_fill',
   'phrase_choice',
   'sentence_plus',
+  'grammar_choice',
+  'grammar_completion',
+  'grammar_sentence_transform',
 ];
 
 module.exports = {

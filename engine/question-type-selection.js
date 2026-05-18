@@ -3,6 +3,9 @@ const IMPLEMENTED_SINGLE_POINT_CODES = [
   'vocab_form_transform',
   'phrase_choice',
   'sentence_ordering',
+  'grammar_choice',
+  'grammar_completion',
+  'grammar_sentence_transform',
 ];
 
 const INFLECTION_LABELS = {
@@ -40,6 +43,9 @@ function mapQuestionTypeToExerciseType(questionType, item, options = {}) {
     case 'phrase_cn_en_fill': return item.type === 'phrase' ? 'cn2en' : null;
     case 'phrase_choice': return item.type === 'phrase' ? 'phrase_choice' : null;
     case 'sentence_ordering': return item.type === 'grammar' ? 'sentence_plus' : null;
+    case 'grammar_choice': return item.type === 'grammar' ? 'grammar_choice' : null;
+    case 'grammar_completion': return item.type === 'grammar' ? 'grammar_completion' : null;
+    case 'grammar_sentence_transform': return item.type === 'grammar' ? 'grammar_sentence_transform' : null;
     default: return null;
   }
 }
@@ -107,7 +113,15 @@ function getSinglePointSupport(item, db) {
     wordDetail: item.type === 'word' ? queries.getWordQuestionDetails(db, item.id) : null,
     phraseQuestions: item.type === 'phrase' ? queries.getPhraseChoiceQuestionsByItem(db, item.id) : [],
     sentenceOrder: item.type === 'grammar' ? queries.getSentenceOrderDetails(db, item.id) : null,
+    grammarExamples: item.type === 'grammar' ? queries.getGrammarExamplesByItem(db, item.id) : [],
   };
+}
+
+function getGrammarExampleTypeForQuestionCode(code) {
+  if (code === 'grammar_choice') return 'choice';
+  if (code === 'grammar_completion') return 'completion';
+  if (code === 'grammar_sentence_transform') return 'sentence_transform';
+  return null;
 }
 
 function getInflectionEntries(wordDetail) {
@@ -141,6 +155,13 @@ function isConfiguredTypeUsable(questionType, item, support) {
         String(support.sentenceOrder.answer_sentence || '').trim() &&
         Array.isArray(support.sentenceOrder.tokens) &&
         support.sentenceOrder.tokens.filter(Boolean).length > 0);
+    case 'grammar_choice':
+    case 'grammar_completion':
+    case 'grammar_sentence_transform': {
+      const exampleType = getGrammarExampleTypeForQuestionCode(questionType.code);
+      return Array.isArray(support.grammarExamples) &&
+        support.grammarExamples.some(example => example.example_type === exampleType);
+    }
     default:
       return true;
   }
@@ -172,7 +193,9 @@ module.exports = {
   INFLECTION_LABELS,
   getInflectionEntries,
   getInflectionEntry,
+  getGrammarExampleTypeForQuestionCode,
   getSinglePointSupport,
+  isConfiguredTypeUsable,
   mapQuestionTypeToExerciseType,
   pickConfiguredQuestionType,
   pickWeightedQuestionType,

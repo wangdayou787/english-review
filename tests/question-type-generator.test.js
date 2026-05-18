@@ -2,6 +2,11 @@ const Database = require('better-sqlite3');
 const { initDatabase } = require('../db/init');
 const queries = require('../db/queries');
 const generator = require('../engine/generator');
+const {
+  getSinglePointSupport,
+  isConfiguredTypeUsable,
+  mapQuestionTypeToExerciseType,
+} = require('../engine/question-type-selection');
 
 function buildDb() {
   const db = new Database(':memory:');
@@ -52,7 +57,7 @@ describe('configured question type generation', () => {
     db.close();
   });
 
-  test('planned question types are not generated even when enabled', () => {
+  test('grammar example question types are not generated without matching examples', () => {
     const { db, grammarId } = buildDb();
     queries.updateQuestionTypeSettings(db, [
       {
@@ -414,6 +419,26 @@ describe('configured question type generation', () => {
     expect(exercise.question_type_code).toBeUndefined();
     expect(exercise.exercise_type).toBe('sentence');
     expect(exercise.correct_answer).toBe('She likes music');
+    db.close();
+  });
+
+  test('maps grammar example question types to exercise types only when examples exist', () => {
+    const { db, grammarId } = buildDb();
+    queries.replaceGrammarExamples(db, grammarId, [{
+      exampleType: 'completion',
+      promptText: 'He ____ (buy) a bike yesterday.',
+      options: [],
+      answerText: 'bought',
+      explanation: 'yesterday 表示一般过去时。',
+    }]);
+
+    const item = queries.getItemById(db, grammarId);
+    const support = getSinglePointSupport(item, db);
+
+    expect(mapQuestionTypeToExerciseType({ code: 'grammar_completion' }, item)).toBe('grammar_completion');
+    expect(mapQuestionTypeToExerciseType({ code: 'grammar_choice' }, item)).toBe('grammar_choice');
+    expect(isConfiguredTypeUsable({ code: 'grammar_completion' }, item, support)).toBe(true);
+    expect(isConfiguredTypeUsable({ code: 'grammar_choice' }, item, support)).toBe(false);
     db.close();
   });
 });

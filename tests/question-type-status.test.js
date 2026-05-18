@@ -20,4 +20,24 @@ describe('question type implementation status', () => {
 
     db.close();
   });
+
+  test('grammar example question types are available', () => {
+    const db = new Database(':memory:');
+    initDatabase(db);
+
+    const rows = db.prepare(
+      `SELECT code, implementation_status
+       FROM question_types
+       WHERE code IN ('grammar_choice', 'grammar_completion', 'grammar_sentence_transform')
+       ORDER BY code`
+    ).all();
+
+    expect(rows).toEqual([
+      { code: 'grammar_choice', implementation_status: 'available' },
+      { code: 'grammar_completion', implementation_status: 'available' },
+      { code: 'grammar_sentence_transform', implementation_status: 'available' },
+    ]);
+
+    db.close();
+  });
 });
