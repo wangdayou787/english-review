@@ -41,6 +41,8 @@ function scoreAnswer(item, exerciseType, userAnswer, correctAnswer) {
     case 'cn2en':
     case 'spelling_fill':
     case 'form_fill':
+    case 'grammar_completion':
+    case 'grammar_sentence_transform':
       isCorrect = normalizedUser.toLowerCase() === normalizedCorrect.toLowerCase();
       break;
     case 'en2cn':
@@ -48,6 +50,9 @@ function scoreAnswer(item, exerciseType, userAnswer, correctAnswer) {
     case 'phrase_choice':
     case 'sentence':
     case 'sentence_plus':
+      isCorrect = normalizedUser === normalizedCorrect;
+      break;
+    case 'grammar_choice':
       isCorrect = normalizedUser === normalizedCorrect;
       break;
     case 'en2cn_fill':
@@ -81,6 +86,9 @@ function getDefaultAnswerMetadata(item, answer) {
     case 'form_fill':
     case 'phrase_choice':
     case 'sentence_plus':
+    case 'grammar_choice':
+    case 'grammar_completion':
+    case 'grammar_sentence_transform':
       return {
         correct_answer: answer.correct_answer || item.chinese || item.english || '',
         explanation: answer.explanation || '',

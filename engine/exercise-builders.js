@@ -1,4 +1,8 @@
-const { getInflectionEntry, getSinglePointSupport } = require('./question-type-selection');
+const {
+  getGrammarExampleTypeForQuestionCode,
+  getInflectionEntry,
+  getSinglePointSupport,
+} = require('./question-type-selection');
 
 function getExerciseTypesForItem(item) {
   switch (item.type) {
@@ -52,6 +56,14 @@ function shuffle(values) {
     return [...shuffled.slice(1), shuffled[0]];
   }
   return shuffled;
+}
+
+function pickGrammarExample(support, exerciseType, random = Math.random) {
+  const exampleType = getGrammarExampleTypeForQuestionCode(exerciseType);
+  const examples = (support.grammarExamples || []).filter(example => example.example_type === exampleType);
+  if (examples.length === 0) return null;
+  const index = Math.min(examples.length - 1, Math.floor(random() * examples.length));
+  return examples[index];
 }
 
 function buildBaseExercise(item, exerciseType, template) {
@@ -157,6 +169,28 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
         correct_answer: detail.answer_sentence,
         words: shuffle(tokens),
         hint_text: detail.hint_text || base.hint_text,
+      };
+    }
+    case 'grammar_choice': {
+      const row = pickGrammarExample(singlePointSupport, exerciseType, options.random || Math.random);
+      if (!row) return createExercise(item, 'sentence', db, {}, singlePointSupport, options);
+      return {
+        ...base,
+        question: row.prompt_text,
+        correct_answer: row.answer_text,
+        options: shuffle(row.options || []),
+        explanation: row.explanation || '',
+      };
+    }
+    case 'grammar_completion':
+    case 'grammar_sentence_transform': {
+      const row = pickGrammarExample(singlePointSupport, exerciseType, options.random || Math.random);
+      if (!row) return createExercise(item, 'sentence', db, {}, singlePointSupport, options);
+      return {
+        ...base,
+        question: row.prompt_text,
+        correct_answer: row.answer_text,
+        explanation: row.explanation || '',
       };
     }
     default:
