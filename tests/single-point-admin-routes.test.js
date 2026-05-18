@@ -607,6 +607,34 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('grammar edit page renders grammar-specific fields', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { itemId } = seedItem(app.locals.db, 'grammar');
+
+    queries.saveGrammarDetails(app.locals.db, itemId, {
+      title: '现在进行时',
+      description: '表示正在发生的动作。',
+      usageNotes: '常与 now 连用。',
+    });
+    queries.replaceGrammarExamples(app.locals.db, itemId, [{
+      exampleType: 'completion',
+      promptText: 'He ____ (buy) a bike yesterday.',
+      options: [],
+      answerText: 'bought',
+      explanation: 'yesterday 表示一般过去时。',
+    }]);
+
+    const res = await requestApp(app, 'GET', `/admin/items/${itemId}/edit`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('语法知识结构');
+    expect(res.text).toContain('name="grammar_detail[title]"');
+    expect(res.text).toContain('name="grammar_examples[0][example_type]"');
+    expect(res.text).toContain('He ____ (buy) a bike yesterday.');
+
+    app.cleanup();
+  });
+
   test('admin edit does not save incomplete sentence order details', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId } = seedItem(app.locals.db, 'grammar');

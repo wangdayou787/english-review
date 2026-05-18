@@ -21,6 +21,20 @@
     distractor_c: '',
     explanation: '',
   });
+  const grammarDetailView = grammarDetail || {};
+  const grammarRows = (grammarExamples && grammarExamples.length ? grammarExamples : [{
+    example_type: 'choice',
+    prompt_text: '',
+    options: [],
+    answer_text: '',
+    explanation: '',
+  }]).map((row) => ({
+    example_type: row.example_type || 'choice',
+    prompt_text: row.prompt_text || '',
+    options_text: row.options_text || (Array.isArray(row.options) ? row.options.join('\n') : ''),
+    answer_text: row.answer_text || '',
+    explanation: row.explanation || '',
+  }));
 %>
 
 <p class="mb-1">
@@ -85,7 +99,53 @@
   <% } %>
 
   <% if (item.type === 'grammar') { %>
-    <h2>连词成句增强版</h2>
+    <section class="form-section">
+      <h2>语法知识结构</h2>
+      <div class="form-group">
+        <label>语法标题</label>
+        <input type="text" name="grammar_detail[title]" value="<%= grammarDetailView.title || item.chinese || item.english || '' %>">
+      </div>
+      <div class="form-group">
+        <label>语法说明</label>
+        <textarea name="grammar_detail[description]" rows="4"><%= grammarDetailView.description || item.chinese || '' %></textarea>
+      </div>
+      <div class="form-group">
+        <label>使用规则</label>
+        <textarea name="grammar_detail[usage_notes]" rows="3"><%= grammarDetailView.usage_notes || '' %></textarea>
+      </div>
+
+      <h3>语法例题</h3>
+      <% grammarRows.forEach((grammarExample, index) => { %>
+        <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:1rem;border-radius:6px;">
+          <div class="form-group">
+            <label>例题类型</label>
+            <select name="grammar_examples[<%= index %>][example_type]">
+              <option value="choice" <%= grammarExample.example_type === 'choice' ? 'selected' : '' %>>单项选择</option>
+              <option value="completion" <%= grammarExample.example_type === 'completion' ? 'selected' : '' %>>完成句子</option>
+              <option value="sentence_transform" <%= grammarExample.example_type === 'sentence_transform' ? 'selected' : '' %>>句型转换</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>题干</label>
+            <textarea name="grammar_examples[<%= index %>][prompt_text]" rows="3"><%= grammarExample.prompt_text || '' %></textarea>
+          </div>
+          <div class="form-group">
+            <label>选项，每行一个，只有单项选择需要填写</label>
+            <textarea name="grammar_examples[<%= index %>][options_text]" rows="4"><%= grammarExample.options_text || '' %></textarea>
+          </div>
+          <div class="form-group">
+            <label>标准答案</label>
+            <input type="text" name="grammar_examples[<%= index %>][answer_text]" value="<%= grammarExample.answer_text || '' %>">
+          </div>
+          <div class="form-group">
+            <label>例题解析</label>
+            <textarea name="grammar_examples[<%= index %>][explanation]" rows="3"><%= grammarExample.explanation || '' %></textarea>
+          </div>
+        </div>
+      <% }) %>
+    </section>
+
+    <h2>连词成句兼容设置</h2>
     <div class="form-group"><label>答案句子</label><input type="text" name="sentence_order[answer_sentence]" value="<%= sentenceDetail.answer_sentence || '' %>"></div>
     <div class="form-group"><label>词块文本</label><input type="text" name="sentence_order[tokens_text]" value="<%= sentenceTokensText %>"></div>
     <div class="form-group"><label>提示文案</label><input type="text" name="sentence_order[hint_text]" value="<%= sentenceDetail.hint_text || '' %>"></div>
