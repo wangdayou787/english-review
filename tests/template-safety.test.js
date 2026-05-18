@@ -48,6 +48,10 @@ describe('review template safety', () => {
     expect(exercise).toContain('appendStoredAnswersForSubmit');
     expect(exercise).toContain('sessionStorage');
     expect(exercise).toContain('reportValidity');
+    expect(exercise).toContain('event.preventDefault()');
+    expect(exercise).toContain('window.location.href = link.href');
+    expect(exercise).toContain('data-total-items');
+    expect(exercise).toContain('storedAnswers.length < totalItems');
     expect(exercise).toContain('page === totalPages');
     expect(exercise).not.toContain('<button type="submit" class="primary-action">提交答案</button>');
   });

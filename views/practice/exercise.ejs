@@ -11,6 +11,7 @@
   data-answer-storage-key="<%= answerStorageKey || '' %>"
   data-page="<%= page %>"
   data-total-pages="<%= totalPages %>"
+  data-total-items="<%= totalItems %>"
 >
   <% if (typeof cycleType !== 'undefined' && cycleType) { %>
     <input type="hidden" name="cycle" value="<%= cycleType %>">
@@ -130,6 +131,7 @@ const exerciseForm = document.getElementById('exercise-form');
 const answerStorageKey = exerciseForm ? exerciseForm.dataset.answerStorageKey : '';
 const page = exerciseForm ? Number(exerciseForm.dataset.page || '1') : 1;
 const totalPages = exerciseForm ? Number(exerciseForm.dataset.totalPages || '1') : 1;
+const totalItems = exerciseForm ? Number(exerciseForm.dataset.totalItems || '0') : 0;
 
 function readStoredAnswers() {
   if (!answerStorageKey || !window.sessionStorage) return {};
@@ -209,31 +211,37 @@ function appendHiddenInput(form, name, value) {
   form.appendChild(input);
 }
 
-function appendStoredAnswersForSubmit() {
+function appendStoredAnswersForSubmit(event) {
   if (!exerciseForm || totalPages <= 1) return;
   if (page === totalPages) {
-  saveCurrentPageAnswers();
-  const storedAnswers = Object.values(readStoredAnswers());
-  document.querySelectorAll('[name^="answers["]').forEach(input => {
-    input.disabled = true;
-  });
-  storedAnswers.forEach((answer, index) => {
-    appendHiddenInput(exerciseForm, `answers[${index}][item_id]`, answer.item_id);
-    appendHiddenInput(exerciseForm, `answers[${index}][exercise_type]`, answer.exercise_type);
-    appendHiddenInput(exerciseForm, `answers[${index}][answer]`, answer.answer);
-  });
-  setTimeout(() => sessionStorage.removeItem(answerStorageKey), 0);
+    saveCurrentPageAnswers();
+    const storedAnswers = Object.values(readStoredAnswers());
+    if (storedAnswers.length < totalItems) {
+      event.preventDefault();
+      alert('请完成所有页面的题目后再提交。');
+      return;
+    }
+    document.querySelectorAll('[name^="answers["]').forEach(input => {
+      input.disabled = true;
+    });
+    storedAnswers.forEach((answer, index) => {
+      appendHiddenInput(exerciseForm, `answers[${index}][item_id]`, answer.item_id);
+      appendHiddenInput(exerciseForm, `answers[${index}][exercise_type]`, answer.exercise_type);
+      appendHiddenInput(exerciseForm, `answers[${index}][answer]`, answer.answer);
+    });
+    setTimeout(() => sessionStorage.removeItem(answerStorageKey), 0);
   }
 }
 
 document.querySelectorAll('.js-page-link').forEach(link => {
   link.addEventListener('click', event => {
+    event.preventDefault();
     if (exerciseForm && !exerciseForm.checkValidity()) {
-      event.preventDefault();
       exerciseForm.reportValidity();
       return;
     }
     saveCurrentPageAnswers();
+    window.location.href = link.href;
   });
 });
 
