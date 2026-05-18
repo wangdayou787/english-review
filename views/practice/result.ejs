@@ -27,7 +27,7 @@
         <div class="text-muted">你的答案：<%= r.user_answer || '(空)' %></div>
         <div class="text-success">正确答案：<%= r.correct_answer %></div>
       <% } %>
-      <% if (r.exercise_type === 'phrase_choice' && r.explanation) { %>
+      <% if (r.explanation) { %>
         <div class="text-muted">辨析说明：<%= r.explanation %></div>
       <% } %>
     </div>

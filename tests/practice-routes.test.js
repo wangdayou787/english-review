@@ -79,6 +79,68 @@ function seedItem(db) {
   });
 }
 
+function seedGrammarPlan(db) {
+  const textbookId = queries.createTextbook(db, 'Grammar Book');
+  const unitId = queries.createUnit(db, textbookId, 'Unit 1');
+  const grammarId = queries.createItem(db, {
+    unitId,
+    type: 'grammar',
+    english: 'Simple past',
+    chinese: '一般过去时',
+    pos: '',
+    example: '',
+  });
+  queries.replaceGrammarExamples(db, grammarId, [{
+    exampleType: 'completion',
+    promptText: 'He ____ (buy) a bike yesterday.',
+    options: [],
+    answerText: 'bought',
+    explanation: 'yesterday 表示一般过去时。',
+  }]);
+  queries.activateReviewPlan(db, { name: 'Grammar Plan', unitIds: [unitId] });
+  queries.setConfig(db, 'daily_words', '0');
+  queries.setConfig(db, 'daily_phrases', '0');
+  queries.setConfig(db, 'daily_grammar', '1');
+  queries.updateQuestionTypeSettings(db, [
+    {
+      code: 'grammar_choice',
+      enabled: false,
+      weight: 0,
+      instructionText: '',
+      primaryActionText: '',
+      hintText: '',
+      displayOptions: {},
+    },
+    {
+      code: 'grammar_completion',
+      enabled: true,
+      weight: 100,
+      instructionText: '根据语境写出正确答案。',
+      primaryActionText: '提交答案',
+      hintText: '',
+      displayOptions: {},
+    },
+    {
+      code: 'grammar_sentence_transform',
+      enabled: false,
+      weight: 0,
+      instructionText: '',
+      primaryActionText: '',
+      hintText: '',
+      displayOptions: {},
+    },
+    {
+      code: 'sentence_ordering',
+      enabled: false,
+      weight: 0,
+      instructionText: '',
+      primaryActionText: '',
+      hintText: '',
+      displayOptions: {},
+    },
+  ]);
+}
+
 describe('practice routes', () => {
   test('practice submit recomputes single-point scoring metadata on the server', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
@@ -126,6 +188,19 @@ describe('practice routes', () => {
 
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toBe('/practice');
+    app.cleanup();
+  });
+
+  test('daily practice renders grammar completion from example bank', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedGrammarPlan(app.locals.db);
+
+    const res = await requestApp(app, 'GET', '/practice/start');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('He ____ (buy) a bike yesterday.');
+    expect(res.text).toContain('语法完成句子');
+
     app.cleanup();
   });
 });

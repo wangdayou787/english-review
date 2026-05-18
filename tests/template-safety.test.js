@@ -39,6 +39,14 @@ describe('review template safety', () => {
     expect(exercise).not.toContain('ex.hint_text');
   });
 
+  test('practice template renders grammar example exercise types', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).toContain("ex.exercise_type === 'grammar_choice'");
+    expect(exercise).toContain("ex.exercise_type === 'grammar_completion'");
+    expect(exercise).toContain("ex.exercise_type === 'grammar_sentence_transform'");
+  });
+
   test('paginated practice stores answers and only submits from the final page', () => {
     const exercise = read('views/practice/exercise.ejs');
 

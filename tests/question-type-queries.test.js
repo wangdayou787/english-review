@@ -56,7 +56,8 @@ describe('question type query helpers', () => {
     const grammarTypes = queries.getAvailableQuestionTypesForItemType(db, 'grammar');
     expect(wordTypes.map(type => type.code)).not.toContain('vocab_en_cn_choice');
     expect(wordTypes.map(type => type.code)).toContain('vocab_listening_choice');
-    expect(grammarTypes.map(type => type.code)).not.toContain('grammar_choice');
+    expect(grammarTypes.map(type => type.code)).toContain('grammar_choice');
+    expect(grammarTypes.map(type => type.code)).toContain('grammar_completion');
   });
 
   test('updateQuestionTypeSettings rejects invalid weights', () => {
