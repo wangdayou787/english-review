@@ -716,6 +716,71 @@ function saveSentenceOrderDetails(db, itemId, { answerSentence, tokens, hintText
   );
 }
 
+function getGrammarDetails(db, itemId) {
+  return db.prepare('SELECT * FROM grammar_details WHERE item_id = ?').get(itemId) || null;
+}
+
+function saveGrammarDetails(db, itemId, { title, description, usageNotes }) {
+  db.prepare(
+    `INSERT INTO grammar_details (item_id, title, description, usage_notes, updated_at)
+     VALUES (?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(item_id) DO UPDATE SET
+       title = excluded.title,
+       description = excluded.description,
+       usage_notes = excluded.usage_notes,
+       updated_at = datetime('now')`
+  ).run(
+    itemId,
+    String(title || '').trim(),
+    String(description || '').trim(),
+    String(usageNotes || '').trim() || null,
+  );
+}
+
+function normalizeGrammarExampleRow(row) {
+  return {
+    ...row,
+    options: parseJsonOrDefault(row.options_json, []),
+  };
+}
+
+function getGrammarExamplesByItem(db, itemId, options = {}) {
+  const typeClause = options.exampleType ? 'AND example_type = ?' : '';
+  const params = options.exampleType ? [itemId, options.exampleType] : [itemId];
+  return db.prepare(
+    `SELECT *
+     FROM grammar_examples
+     WHERE item_id = ?
+       ${typeClause}
+     ORDER BY sort_order, id`
+  ).all(...params).map(normalizeGrammarExampleRow);
+}
+
+function replaceGrammarExamples(db, itemId, examples) {
+  const rows = Array.isArray(examples) ? examples : [];
+  const insert = db.prepare(
+    `INSERT INTO grammar_examples (
+       item_id, example_type, prompt_text, options_json, answer_text, explanation, sort_order
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM grammar_examples WHERE item_id = ?').run(itemId);
+    rows.forEach((row, index) => {
+      insert.run(
+        itemId,
+        row.exampleType,
+        row.promptText,
+        JSON.stringify(Array.isArray(row.options) ? row.options : []),
+        row.answerText,
+        row.explanation || null,
+        index + 1,
+      );
+    });
+  });
+  tx();
+}
+
 function safeParseDisplayOptions(value) {
   try {
     return { ...DEFAULT_DISPLAY_OPTIONS, ...JSON.parse(value || '{}') };
@@ -867,6 +932,10 @@ module.exports = {
   deletePhraseChoiceQuestion,
   getSentenceOrderDetails,
   saveSentenceOrderDetails,
+  getGrammarDetails,
+  saveGrammarDetails,
+  getGrammarExamplesByItem,
+  replaceGrammarExamples,
   getQuestionTypeGroups,
   updateQuestionTypeSettings,
   getAvailableQuestionTypesForItemType,

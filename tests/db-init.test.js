@@ -148,6 +148,15 @@ describe('db/init.js â€?database initialization', () => {
     expect(tables).toContain('sentence_order_details');
   });
 
+  test('initDatabase creates grammar detail and example tables', () => {
+    const tables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).all().map(r => r.name);
+
+    expect(tables).toContain('grammar_details');
+    expect(tables).toContain('grammar_examples');
+  });
+
   test('word_question_details and sentence_order_details enforce one row per item', () => {
     const textbookId = db.prepare("INSERT INTO textbooks (name) VALUES ('Schema Book')").run().lastInsertRowid;
     const unitId = db.prepare("INSERT INTO units (textbook_id, name) VALUES (?, 'Unit 1')").run(textbookId).lastInsertRowid;

@@ -216,6 +216,29 @@ function initDatabase(db) {
       hint_text        TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS grammar_details (
+      item_id     INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+      title       TEXT    NOT NULL DEFAULT '',
+      description TEXT    NOT NULL DEFAULT '',
+      usage_notes TEXT,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS grammar_examples (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id       INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+      example_type  TEXT    NOT NULL CHECK(example_type IN ('choice', 'completion', 'sentence_transform')),
+      prompt_text   TEXT    NOT NULL,
+      options_json  TEXT    NOT NULL DEFAULT '[]' CHECK(json_valid(options_json) AND json_type(options_json) = 'array'),
+      answer_text   TEXT    NOT NULL,
+      explanation   TEXT,
+      sort_order    INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_grammar_examples_item_sort ON grammar_examples(item_id, sort_order, id);
+
     CREATE TRIGGER IF NOT EXISTS trg_word_question_details_item_type_ins
     BEFORE INSERT ON word_question_details
     FOR EACH ROW
@@ -264,13 +287,31 @@ function initDatabase(db) {
       SELECT RAISE(ABORT, 'sentence_order_details requires a grammar item');
     END;
 
+    CREATE TRIGGER IF NOT EXISTS trg_grammar_details_item_type_ins
+    BEFORE INSERT ON grammar_details
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'grammar'
+    BEGIN
+      SELECT RAISE(ABORT, 'grammar_details requires a grammar item');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_grammar_examples_item_type_ins
+    BEFORE INSERT ON grammar_examples
+    FOR EACH ROW
+    WHEN (SELECT type FROM items WHERE id = NEW.item_id) IS NOT 'grammar'
+    BEGIN
+      SELECT RAISE(ABORT, 'grammar_examples requires a grammar item');
+    END;
+
     CREATE TRIGGER IF NOT EXISTS trg_items_type_guard
     BEFORE UPDATE OF type ON items
     FOR EACH ROW
     WHEN NEW.type <> OLD.type AND (
       EXISTS(SELECT 1 FROM word_question_details WHERE item_id = OLD.id) OR
       EXISTS(SELECT 1 FROM phrase_choice_questions WHERE item_id = OLD.id) OR
-      EXISTS(SELECT 1 FROM sentence_order_details WHERE item_id = OLD.id)
+      EXISTS(SELECT 1 FROM sentence_order_details WHERE item_id = OLD.id) OR
+      EXISTS(SELECT 1 FROM grammar_details WHERE item_id = OLD.id) OR
+      EXISTS(SELECT 1 FROM grammar_examples WHERE item_id = OLD.id)
     )
     BEGIN
       SELECT RAISE(ABORT, 'items.type cannot change while support rows exist');
