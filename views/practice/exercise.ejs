@@ -1,4 +1,9 @@
-<h1><%= title %></h1>
+<div class="flex-between mb-1">
+  <h1><%= title %></h1>
+  <% if (typeof cycleType === 'undefined' || !cycleType) { %>
+    <a href="/practice/print" class="btn">打印今日复习</a>
+  <% } %>
+</div>
 <p class="text-muted mb-1">
   共 <%= totalItems %> 题
   <% if (totalPages > 1) { %>(第 <%= page %> / <%= totalPages %> 页)<% } %>

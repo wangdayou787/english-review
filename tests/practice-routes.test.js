@@ -203,4 +203,33 @@ describe('practice routes', () => {
 
     app.cleanup();
   });
+
+  test('daily practice page links to print view', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedGrammarPlan(app.locals.db);
+
+    const res = await requestApp(app, 'GET', '/practice/start');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('href="/practice/print"');
+    expect(res.text).toContain('打印今日复习');
+
+    app.cleanup();
+  });
+
+  test('daily practice print view renders printable exercises without answer form', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    seedGrammarPlan(app.locals.db);
+
+    const res = await requestApp(app, 'GET', '/practice/print');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('今日复习打印');
+    expect(res.text).toContain('He ____ (buy) a bike yesterday.');
+    expect(res.text).toContain('window.print()');
+    expect(res.text).not.toContain('action="/practice/submit"');
+    expect(res.text).not.toContain('name="answers[');
+
+    app.cleanup();
+  });
 });

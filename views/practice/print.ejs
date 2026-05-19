@@ -1,0 +1,123 @@
+<style>
+  .print-toolbar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .print-exercise {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    page-break-inside: avoid;
+  }
+
+  .print-options {
+    margin: 0.75rem 0 0;
+    padding-left: 1.5rem;
+  }
+
+  .print-word-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .print-word-list span {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  @media print {
+    nav,
+    .no-print {
+      display: none !important;
+    }
+
+    body {
+      background: #fff;
+    }
+
+    main {
+      max-width: none;
+      width: auto;
+    }
+  }
+</style>
+
+<div class="print-toolbar mb-1">
+  <div>
+    <h1><%= title %></h1>
+    <p class="text-muted">共 <%= totalItems %> 题</p>
+  </div>
+  <div class="no-print action-row">
+    <button type="button" id="print-button" class="btn btn-primary">打印</button>
+    <a href="/practice/start" class="btn">返回今日复习</a>
+  </div>
+</div>
+
+<% if (activePlan && activePlan.units && activePlan.units.length > 0) { %>
+  <p class="text-muted mb-1">
+    当前范围：
+    <% activePlan.units.forEach((unit, index) => { %>
+      <%= index > 0 ? '、' : '' %><%= unit.textbook_name %> <%= unit.name %>
+    <% }) %>
+  </p>
+<% } %>
+
+<% exercises.forEach((ex, idx) => { %>
+  <article class="print-exercise">
+    <div class="exercise-meta">
+      <strong>第 <%= idx + 1 %> 题</strong>
+      <span class="text-muted">
+        <% if (ex.exercise_type === 'en2cn') { %>英译中
+        <% } else if (ex.exercise_type === 'cn2en') { %>中译英
+        <% } else if (ex.exercise_type === 'cn2en_choice') { %>中文选英文
+        <% } else if (ex.exercise_type === 'en2cn_fill') { %>英译中填空
+        <% } else if (ex.exercise_type === 'listening') { %>听音辨义
+        <% } else if (ex.exercise_type === 'sentence') { %>连词成句
+        <% } else if (ex.exercise_type === 'spelling_fill') { %>单词拼写填空
+        <% } else if (ex.exercise_type === 'form_fill') { %>词形变换填空
+        <% } else if (ex.exercise_type === 'phrase_choice') { %>短语单选辨析
+        <% } else if (ex.exercise_type === 'sentence_plus') { %>连词成句增强版
+        <% } else if (ex.exercise_type === 'grammar_choice') { %>语法单项选择
+        <% } else if (ex.exercise_type === 'grammar_completion') { %>语法完成句子
+        <% } else if (ex.exercise_type === 'grammar_sentence_transform') { %>语法句型转换
+        <% } %>
+      </span>
+    </div>
+
+    <% if (ex.instruction_text) { %>
+      <p class="exercise-instruction"><%= ex.instruction_text %></p>
+    <% } %>
+
+    <div class="exercise-question"><%= ex.question %></div>
+
+    <% if (ex.options) { %>
+      <ol class="print-options" type="A">
+        <% ex.options.forEach((opt) => { %>
+          <li><%= opt %></li>
+        <% }) %>
+      </ol>
+    <% } %>
+
+    <% if (ex.words && (ex.exercise_type === 'sentence' || ex.exercise_type === 'sentence_plus')) { %>
+      <div class="print-word-list">
+        <% ex.words.forEach((word) => { %>
+          <span><%= word %></span>
+        <% }) %>
+      </div>
+    <% } %>
+  </article>
+<% }) %>
+
+<script>
+document.getElementById('print-button').addEventListener('click', () => {
+  window.print();
+});
+</script>

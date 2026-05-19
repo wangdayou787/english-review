@@ -38,6 +38,18 @@ function parseItemId(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function getDailyPracticeItems(db, userId, config) {
+  const activePlan = queries.getActiveReviewPlan(db);
+  if (!activePlan) return { activePlan: null, items: [] };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const result = scheduler.getOrCreateDailyReviewTasks(db, userId, activePlan.id, today, config);
+  return {
+    activePlan,
+    items: [...result.words, ...result.phrases, ...result.grammar],
+  };
+}
+
 router.use(requireAuth);
 
 // ── Dashboard ────────────────────────────────────────────────────
@@ -157,6 +169,24 @@ router.get('/practice/wrong', (req, res) => {
 });
 
 // ── Start exercise (daily or cycle) ──────────────────────────────
+router.get('/practice/print', (req, res) => {
+  const db = req.app.locals.db;
+  const userId = req.session.user.id;
+  const config = queries.getConfig(db);
+  const { activePlan, items } = getDailyPracticeItems(db, userId, config);
+
+  if (!activePlan) return res.redirect('/practice');
+  if (items.length === 0) return res.redirect('/practice/start');
+
+  const exercises = generator.generateExercises(items, db);
+  renderWithLayout(res, 'practice/print', {
+    exercises,
+    activePlan,
+    title: '今日复习打印',
+    totalItems: items.length,
+  }, '今日复习打印');
+});
+
 router.get('/practice/start', (req, res) => {
   const db = req.app.locals.db;
   const userId = req.session.user.id;
@@ -180,14 +210,13 @@ router.get('/practice/start', (req, res) => {
     title = `${cycleType === 'weekly' ? '周' : cycleType === 'biweekly' ? '双周' : '月'}复习`;
   } else {
     // Daily review via active plan
-    const activePlan = queries.getActiveReviewPlan(db);
+    const dailyPractice = getDailyPracticeItems(db, userId, config);
+    const activePlan = dailyPractice.activePlan;
     if (!activePlan) {
       return res.redirect('/practice');
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const result = scheduler.getOrCreateDailyReviewTasks(db, userId, activePlan.id, today, config);
-    items = [...result.words, ...result.phrases, ...result.grammar];
+    items = dailyPractice.items;
     title = '今日复习';
   }
 
