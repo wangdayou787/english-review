@@ -406,6 +406,29 @@ function initDatabase(db) {
      ) VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
 
+  const repairCorruptedQuestionTypeSetting = db.prepare(
+    `UPDATE question_type_settings
+     SET instruction_text = CASE
+           WHEN instr(instruction_text, '?') > 0 THEN ?
+           ELSE instruction_text
+         END,
+         primary_action_text = CASE
+           WHEN instr(primary_action_text, '?') > 0 THEN ?
+           ELSE primary_action_text
+         END,
+         hint_text = CASE
+           WHEN instr(hint_text, '?') > 0 THEN ?
+           ELSE hint_text
+         END,
+         updated_at = datetime('now')
+     WHERE question_type_code = ?
+       AND (
+         instr(instruction_text, '?') > 0 OR
+         instr(primary_action_text, '?') > 0 OR
+         instr(hint_text, '?') > 0
+       )`
+  );
+
   QUESTION_TYPES.forEach((type, index) => {
     insertQuestionType.run(
       type.code,
@@ -426,6 +449,12 @@ function initDatabase(db) {
       type.primaryActionText,
       type.hintText,
       serializeDisplayOptions(type.displayOptions)
+    );
+    repairCorruptedQuestionTypeSetting.run(
+      type.instructionText,
+      type.primaryActionText,
+      type.hintText,
+      type.code,
     );
   });
 }
