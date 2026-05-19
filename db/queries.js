@@ -720,6 +720,39 @@ function getGrammarDetails(db, itemId) {
   return db.prepare('SELECT * FROM grammar_details WHERE item_id = ?').get(itemId) || null;
 }
 
+function getGrammarDetailsForUnit(db, unitId) {
+  return db.prepare(
+    `SELECT items.id AS item_id,
+            items.unit_id,
+            grammar_details.title,
+            grammar_details.description,
+            grammar_details.usage_notes
+     FROM grammar_details
+     JOIN items ON items.id = grammar_details.item_id
+     WHERE items.unit_id = ?
+       AND items.type = 'grammar'
+     ORDER BY items.sort_order, items.id`
+  ).all(unitId);
+}
+
+function getGrammarItemByTitleInUnit(db, unitId, title) {
+  const normalizedTitle = String(title || '').trim();
+  if (!normalizedTitle) return null;
+  return db.prepare(
+    `SELECT items.*,
+            grammar_details.title,
+            grammar_details.description,
+            grammar_details.usage_notes
+     FROM grammar_details
+     JOIN items ON items.id = grammar_details.item_id
+     WHERE items.unit_id = ?
+       AND items.type = 'grammar'
+       AND grammar_details.title = ?
+     ORDER BY items.id
+     LIMIT 1`
+  ).get(unitId, normalizedTitle) || null;
+}
+
 function saveGrammarDetails(db, itemId, { title, description, usageNotes }) {
   db.prepare(
     `INSERT INTO grammar_details (item_id, title, description, usage_notes, updated_at)
@@ -933,6 +966,8 @@ module.exports = {
   getSentenceOrderDetails,
   saveSentenceOrderDetails,
   getGrammarDetails,
+  getGrammarDetailsForUnit,
+  getGrammarItemByTitleInUnit,
   saveGrammarDetails,
   getGrammarExamplesByItem,
   replaceGrammarExamples,

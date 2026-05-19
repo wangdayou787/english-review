@@ -88,4 +88,44 @@ describe('grammar example queries', () => {
     }).toThrow('grammar_details requires a grammar item');
     db.close();
   });
+
+  test('loads grammar details for one unit and finds by trimmed title', () => {
+    const { db, grammarId } = setup();
+    const otherUnitId = queries.createUnit(db, queries.getUnitById(db, 1).textbook_id, 'Unit 2');
+    const otherGrammarId = queries.createItem(db, {
+      unitId: otherUnitId,
+      type: 'grammar',
+      english: '',
+      chinese: '',
+    });
+
+    queries.saveGrammarDetails(db, grammarId, {
+      title: '一般过去时',
+      description: '表示过去发生的动作。',
+      usageNotes: '常与 yesterday 连用。',
+    });
+    queries.saveGrammarDetails(db, otherGrammarId, {
+      title: '一般过去时',
+      description: '另一个单元的说明。',
+      usageNotes: '另一个单元的规则。',
+    });
+
+    const details = queries.getGrammarDetailsForUnit(db, 1);
+    const found = queries.getGrammarItemByTitleInUnit(db, 1, '  一般过去时  ');
+
+    expect(details).toEqual([
+      expect.objectContaining({
+        item_id: grammarId,
+        title: '一般过去时',
+        description: '表示过去发生的动作。',
+        usage_notes: '常与 yesterday 连用。',
+      }),
+    ]);
+    expect(found).toMatchObject({
+      id: grammarId,
+      unit_id: 1,
+      title: '一般过去时',
+    });
+    db.close();
+  });
 });
