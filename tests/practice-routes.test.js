@@ -191,6 +191,16 @@ describe('practice routes', () => {
     app.cleanup();
   });
 
+  test('stale GET requests to the submit endpoint return to the practice dashboard', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+
+    const res = await requestApp(app, 'GET', '/practice/submit');
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/practice');
+    app.cleanup();
+  });
+
   test('daily practice renders grammar completion from example bank', async () => {
     const app = buildApp({ id: 2, username: 'student', role: 'user' });
     seedGrammarPlan(app.locals.db);

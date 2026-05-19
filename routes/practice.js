@@ -263,6 +263,10 @@ router.get('/practice/start', (req, res) => {
 });
 
 // ── Submit answers ───────────────────────────────────────────────
+router.get('/practice/submit', (req, res) => {
+  res.redirect('/practice');
+});
+
 router.post('/practice/submit', (req, res) => {
   const db = req.app.locals.db;
   const userId = req.session.user.id;
