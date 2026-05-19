@@ -85,6 +85,16 @@ describe('review template safety', () => {
     expect(editItem).toContain('field.disabled = !isChoice');
   });
 
+  test('add item form can autofill grammar details by existing title', () => {
+    const addItems = read('views/admin/items.ejs');
+
+    expect(addItems).toContain('grammar-title-reuse-data');
+    expect(addItems).toContain('applyGrammarTitleReuse');
+    expect(addItems).toContain('grammarDetailTitleInput');
+    expect(addItems).toContain('grammarDetailDescriptionInput');
+    expect(addItems).toContain('grammarDetailUsageNotesInput');
+  });
+
   test('question type settings updates selected count without inline handlers', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 

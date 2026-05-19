@@ -12,6 +12,12 @@
   <div class="alert alert-success"><%= success %></div>
 <% } %>
 
+<%
+  const grammarReuseRows = typeof grammarTitleReuseData !== 'undefined' ? grammarTitleReuseData : [];
+  const grammarReuseJson = JSON.stringify(grammarReuseRows).replace(/</g, '\\u003c');
+%>
+<script type="application/json" id="grammar-title-reuse-data"><%- grammarReuseJson %></script>
+
 <!-- Single item form -->
 <form method="POST" action="/admin/units/<%= unit.id %>/items" class="mb-2" style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
   <h3 class="mb-1">添加条目</h3>
@@ -39,15 +45,15 @@
     <h3>语法知识结构</h3>
     <div class="form-group">
       <label>语法标题</label>
-      <input type="text" name="grammar_detail[title]" placeholder="例如：一般过去时">
+      <input type="text" id="grammar-detail-title" name="grammar_detail[title]" placeholder="例如：一般过去时">
     </div>
     <div class="form-group">
       <label>语法说明</label>
-      <textarea name="grammar_detail[description]" rows="4" placeholder="说明这个语法点的核心用法"></textarea>
+      <textarea id="grammar-detail-description" name="grammar_detail[description]" rows="4" placeholder="说明这个语法点的核心用法"></textarea>
     </div>
     <div class="form-group">
       <label>使用规则</label>
-      <textarea name="grammar_detail[usage_notes]" rows="3" placeholder="常见时间状语、结构、易错点等"></textarea>
+      <textarea id="grammar-detail-usage-notes" name="grammar_detail[usage_notes]" rows="3" placeholder="常见时间状语、结构、易错点等"></textarea>
     </div>
 
     <h3>语法例题</h3>
@@ -94,6 +100,25 @@
   const lexicalPanel = document.querySelector('[data-type-panel="lexical"]');
   const grammarPanel = document.querySelector('[data-type-panel="grammar"]');
   const grammarExamples = document.getElementById('grammar-examples');
+  const grammarTitleReuseDataElement = document.getElementById('grammar-title-reuse-data');
+  const grammarTitleReuseData = grammarTitleReuseDataElement
+    ? JSON.parse(grammarTitleReuseDataElement.textContent || '[]')
+    : [];
+  const grammarDetailTitleInput = document.getElementById('grammar-detail-title');
+  const grammarDetailDescriptionInput = document.getElementById('grammar-detail-description');
+  const grammarDetailUsageNotesInput = document.getElementById('grammar-detail-usage-notes');
+
+  function applyGrammarTitleReuse() {
+    if (!grammarDetailTitleInput || !grammarDetailDescriptionInput || !grammarDetailUsageNotesInput) return;
+    const title = grammarDetailTitleInput.value.trim();
+    if (!title) return;
+
+    const matchedDetail = grammarTitleReuseData.find((detail) => detail.title === title);
+    if (!matchedDetail) return;
+
+    grammarDetailDescriptionInput.value = matchedDetail.description || '';
+    grammarDetailUsageNotesInput.value = matchedDetail.usage_notes || '';
+  }
 
   function setPanelDisabled(panel, disabled) {
     panel.querySelectorAll('input, textarea, select, button').forEach((field) => {
@@ -171,6 +196,8 @@
     }
   });
 
+  grammarDetailTitleInput.addEventListener('change', applyGrammarTitleReuse);
+  grammarDetailTitleInput.addEventListener('blur', applyGrammarTitleReuse);
   typeSelect.addEventListener('change', updateTypePanels);
   updateTypePanels();
 })();

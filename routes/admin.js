@@ -20,7 +20,15 @@ function renderWithLayout(res, view, data, title) {
 function renderUnitItems(res, db, unit, { error = null, success = null } = {}) {
   const textbook = db.prepare('SELECT * FROM textbooks WHERE id = ?').get(unit.textbook_id);
   const items = queries.getItemsByUnit(db, unit.id);
-  renderWithLayout(res, 'admin/items', { textbook, unit, items, error, success }, unit.name);
+  const grammarTitleReuseData = queries.getGrammarDetailsForUnit(db, unit.id);
+  renderWithLayout(res, 'admin/items', {
+    textbook,
+    unit,
+    items,
+    grammarTitleReuseData,
+    error,
+    success,
+  }, unit.name);
 }
 router.use('/admin', requireAdmin);
 router.get('/admin', (req, res) => res.redirect('/admin/textbooks'));

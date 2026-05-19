@@ -333,6 +333,26 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('admin unit item page embeds existing grammar details for title reuse', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId, itemId } = seedItem(app.locals.db, 'grammar');
+    queries.saveGrammarDetails(app.locals.db, itemId, {
+      title: '被动语态',
+      description: '表示主语是动作承受者。',
+      usageNotes: 'be done 结构。',
+    });
+
+    const res = await requestApp(app, 'GET', `/admin/units/${unitId}/items`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.text).toContain('id="grammar-title-reuse-data"');
+    expect(res.text).toContain('被动语态');
+    expect(res.text).toContain('表示主语是动作承受者。');
+    expect(res.text).toContain('be done 结构。');
+
+    app.cleanup();
+  });
+
   test('admin can add grammar item with details and example from unit item page', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { unitId } = seedItem(app.locals.db, 'word');
