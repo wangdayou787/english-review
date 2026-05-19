@@ -71,6 +71,20 @@ describe('review template safety', () => {
     expect(questionTypes).not.toContain('type.hint_text');
   });
 
+  test('grammar example options are toggled by example type in admin forms', () => {
+    const addItems = read('views/admin/items.ejs');
+    const editItem = read('views/admin/item-edit.ejs');
+
+    expect(addItems).toContain('data-grammar-options-field');
+    expect(addItems).toContain('toggleGrammarOptionFields');
+    expect(addItems).toContain('optionField.hidden = !isChoice');
+    expect(addItems).toContain('field.disabled = !isChoice');
+    expect(editItem).toContain('data-grammar-options-field');
+    expect(editItem).toContain('toggleGrammarOptionFields');
+    expect(editItem).toContain('optionField.hidden = !isChoice');
+    expect(editItem).toContain('field.disabled = !isChoice');
+  });
+
   test('question type settings updates selected count without inline handlers', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 

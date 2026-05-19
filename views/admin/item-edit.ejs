@@ -116,7 +116,7 @@
 
       <h3>语法例题</h3>
       <% grammarRows.forEach((grammarExample, index) => { %>
-        <div style="border:1px solid #ddd;padding:0.75rem;margin-bottom:1rem;border-radius:6px;">
+        <div data-grammar-example-row style="border:1px solid #ddd;padding:0.75rem;margin-bottom:1rem;border-radius:6px;">
           <div class="form-group">
             <label>例题类型</label>
             <select name="grammar_examples[<%= index %>][example_type]">
@@ -129,7 +129,7 @@
             <label>题干</label>
             <textarea name="grammar_examples[<%= index %>][prompt_text]" rows="3"><%= grammarExample.prompt_text || '' %></textarea>
           </div>
-          <div class="form-group">
+          <div class="form-group" data-grammar-options-field>
             <label>选项，每行一个，只有单项选择需要填写</label>
             <textarea name="grammar_examples[<%= index %>][options_text]" rows="4"><%= grammarExample.options_text || '' %></textarea>
           </div>
@@ -154,3 +154,30 @@
   <button type="submit" class="btn btn-primary">保存</button>
   <a href="/admin/units/<%= unit.id %>/items" class="btn">取消</a>
 </form>
+
+<script>
+(() => {
+  function toggleGrammarOptionFields(root = document) {
+    root.querySelectorAll('[data-grammar-example-row]').forEach((row) => {
+      const typeSelect = row.querySelector('select[name$="[example_type]"]');
+      const optionField = row.querySelector('[data-grammar-options-field]');
+      if (!typeSelect || !optionField) return;
+
+      const isChoice = typeSelect.value === 'choice';
+      optionField.hidden = !isChoice;
+      optionField.querySelectorAll('input, textarea, select').forEach((field) => {
+        field.disabled = !isChoice;
+        if (!isChoice) field.value = '';
+      });
+    });
+  }
+
+  document.addEventListener('change', (event) => {
+    if (event.target.matches('select[name$="[example_type]"]')) {
+      toggleGrammarOptionFields();
+    }
+  });
+
+  toggleGrammarOptionFields();
+})();
+</script>

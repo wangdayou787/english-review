@@ -65,7 +65,7 @@
           <label>题干</label>
           <textarea name="grammar_examples[0][prompt_text]" rows="3" placeholder="例如：He ____ (buy) a bike yesterday."></textarea>
         </div>
-        <div class="form-group">
+        <div class="form-group" data-grammar-options-field>
           <label>选项，每行一个，只有单项选择需要填写</label>
           <textarea name="grammar_examples[0][options_text]" rows="4" placeholder="A. buy&#10;B. buys&#10;C. bought&#10;D. buying"></textarea>
         </div>
@@ -101,13 +101,33 @@
     });
   }
 
+  function toggleGrammarOptionFields(root = document) {
+    root.querySelectorAll('[data-grammar-example-row]').forEach((row) => {
+      const typeSelect = row.querySelector('select[name$="[example_type]"]');
+      const optionField = row.querySelector('[data-grammar-options-field]');
+      if (!typeSelect || !optionField) return;
+
+      const isChoice = typeSelect.value === 'choice';
+      optionField.hidden = !isChoice;
+      optionField.querySelectorAll('input, textarea, select').forEach((field) => {
+        field.disabled = !isChoice;
+        if (!isChoice) field.value = '';
+      });
+    });
+  }
+
   function updateTypePanels() {
     const isPhrase = typeSelect.value === 'phrase';
     const isGrammar = typeSelect.value === 'grammar';
     lexicalPanel.hidden = isGrammar;
     grammarPanel.hidden = !isGrammar;
     setPanelDisabled(lexicalPanel, isGrammar);
-    setPanelDisabled(grammarPanel, !isGrammar);
+    if (isGrammar) {
+      setPanelDisabled(grammarPanel, false);
+      toggleGrammarOptionFields(grammarPanel);
+    } else {
+      setPanelDisabled(grammarPanel, true);
+    }
     addButton.hidden = !isPhrase;
     if (!isPhrase) {
       extraExamples.replaceChildren();
@@ -141,7 +161,14 @@
       }
     });
     grammarExamples.appendChild(clone);
+    toggleGrammarOptionFields(clone);
     clone.querySelector('select').focus();
+  });
+
+  grammarExamples.addEventListener('change', (event) => {
+    if (event.target.matches('select[name$="[example_type]"]')) {
+      toggleGrammarOptionFields(grammarExamples);
+    }
   });
 
   typeSelect.addEventListener('change', updateTypePanels);
