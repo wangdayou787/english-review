@@ -64,6 +64,26 @@ describe('plan-aware daily scheduler', () => {
     db.close();
   });
 
+  test('same-day calls top up saved tasks when quota increases', () => {
+    const { db, planId, userId } = setup();
+
+    const first = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-11', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+    const second = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-11', {
+      daily_words: 10,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    expect(first.words).toHaveLength(6);
+    expect(second.words).toHaveLength(10);
+    expect(first.words.map(item => item.id).every(id => second.words.map(item => item.id).includes(id))).toBe(true);
+    db.close();
+  });
+
   test('weekday uses one new word and five review words for quota six when review pool is large enough', () => {
     const { db, planId, userId } = setup();
 

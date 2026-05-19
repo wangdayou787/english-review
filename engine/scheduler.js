@@ -230,12 +230,7 @@ function selectPlanItemsForType({ candidates, reviewPoolItems, wrongIds, knownId
   return [...selectedNew, ...selectedReview].slice(0, quota);
 }
 
-function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
-  const existing = queries.getDailyReviewTasks(db, userId, planId, taskDate);
-  if (existing.length > 0) {
-    return groupTasksByType(existing);
-  }
-
+function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
   const dayRole = getDayRole(taskDate);
   const weekdayRange = getCalendarWeekdayRange(taskDate);
   const planItems = queries.getItemsForPlan(db, planId);
@@ -251,7 +246,7 @@ function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
     grammar: planItems.filter(item => item.type === 'grammar'),
   };
 
-  const selected = {
+  return {
     words: selectPlanItemsForType({
       candidates: byType.words,
       reviewPoolItems,
@@ -277,6 +272,50 @@ function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
       dayRole,
     }),
   };
+}
+
+function topUpExistingDailyTasks(db, userId, planId, taskDate, existing, quotas) {
+  const grouped = groupTasksByType(existing);
+  const existingIds = new Set(existing.map(item => item.id));
+  const knownIds = new Set(queries.getKnownItemIds(db, userId));
+  const planItems = queries.getItemsForPlan(db, planId);
+  const quotaByType = {
+    word: parseInt(quotas.daily_words, 10) || 0,
+    phrase: parseInt(quotas.daily_phrases, 10) || 0,
+    grammar: parseInt(quotas.daily_grammar, 10) || 0,
+  };
+  const existingCountByType = {
+    word: grouped.words.length,
+    phrase: grouped.phrases.length,
+    grammar: grouped.grammar.length,
+  };
+
+  const tasks = [];
+  for (const type of ['word', 'phrase', 'grammar']) {
+    const needed = quotaByType[type] - existingCountByType[type];
+    if (needed <= 0) continue;
+
+    const candidates = planItems
+      .filter(item => item.type === type && !existingIds.has(item.id) && !knownIds.has(item.id))
+      .slice(0, needed);
+    for (const item of candidates) {
+      tasks.push({ item_id: item.id, source_type: 'new' });
+    }
+  }
+
+  if (tasks.length > 0) {
+    queries.saveDailyReviewTasks(db, { userId, planId, taskDate, tasks });
+  }
+}
+
+function getOrCreateDailyReviewTasks(db, userId, planId, taskDate, quotas) {
+  const existing = queries.getDailyReviewTasks(db, userId, planId, taskDate);
+  if (existing.length > 0) {
+    topUpExistingDailyTasks(db, userId, planId, taskDate, existing, quotas);
+    return groupTasksByType(queries.getDailyReviewTasks(db, userId, planId, taskDate));
+  }
+
+  const selected = buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas);
 
   const flatTasks = [...selected.words, ...selected.phrases, ...selected.grammar].map(item => ({
     item_id: item.id,
