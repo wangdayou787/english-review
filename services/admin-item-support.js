@@ -132,6 +132,10 @@ function draftGrammarExamples(rawRows) {
   }));
 }
 
+function getNormalizedGrammarExamples(rawRows) {
+  return normalizeGrammarExampleRows(rawRows);
+}
+
 function getPhraseChoiceQuestionForItem(db, itemId, questionId) {
   return db.prepare(
     'SELECT * FROM phrase_choice_questions WHERE id = ? AND item_id = ?'
@@ -238,6 +242,7 @@ function saveSupportData(db, itemId, type, body) {
 
 module.exports = {
   clearSupportData,
+  getNormalizedGrammarExamples,
   getDraftSupportViewData,
   getItemSupportViewData,
   getPhraseChoiceQuestionForItem,

@@ -814,6 +814,34 @@ function replaceGrammarExamples(db, itemId, examples) {
   tx();
 }
 
+function appendGrammarExamples(db, itemId, examples) {
+  const rows = Array.isArray(examples) ? examples : [];
+  if (rows.length === 0) return;
+  const currentMax = db.prepare(
+    'SELECT COALESCE(MAX(sort_order), 0) AS max_sort FROM grammar_examples WHERE item_id = ?'
+  ).get(itemId).max_sort;
+  const insert = db.prepare(
+    `INSERT INTO grammar_examples (
+       item_id, example_type, prompt_text, options_json, answer_text, explanation, sort_order
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  const tx = db.transaction(() => {
+    rows.forEach((row, index) => {
+      insert.run(
+        itemId,
+        row.exampleType,
+        row.promptText,
+        JSON.stringify(Array.isArray(row.options) ? row.options : []),
+        row.answerText,
+        row.explanation || null,
+        currentMax + index + 1,
+      );
+    });
+  });
+  tx();
+}
+
 function safeParseDisplayOptions(value) {
   try {
     return { ...DEFAULT_DISPLAY_OPTIONS, ...JSON.parse(value || '{}') };
@@ -971,6 +999,7 @@ module.exports = {
   saveGrammarDetails,
   getGrammarExamplesByItem,
   replaceGrammarExamples,
+  appendGrammarExamples,
   getQuestionTypeGroups,
   updateQuestionTypeSettings,
   getAvailableQuestionTypesForItemType,

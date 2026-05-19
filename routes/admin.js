@@ -6,6 +6,7 @@ const { normalizeExampleText } = require('../lib/item-examples');
 const {
   clearSupportData,
   getDraftSupportViewData,
+  getNormalizedGrammarExamples,
   getItemSupportViewData,
   getPhraseChoiceQuestionForItem,
   saveSupportData,
@@ -219,6 +220,24 @@ router.post('/admin/units/:id/items', (req, res) => {
   if ((type === 'word' || type === 'phrase') && (!english || !chinese)) {
     const items = queries.getItemsByUnit(db, req.params.id);
     return renderWithLayout(res, 'admin/items', { textbook, unit, items, error: '英文和中文不能为空' }, unit.name);
+  }
+  if (type === 'grammar') {
+    const detail = req.body.grammar_detail || {};
+    const title = String(detail.title || '').trim();
+    const existing = queries.getGrammarItemByTitleInUnit(db, parseInt(req.params.id, 10), title);
+    if (existing) {
+      queries.saveGrammarDetails(db, existing.id, {
+        title,
+        description: detail.description || '',
+        usageNotes: detail.usage_notes || '',
+      });
+      queries.appendGrammarExamples(
+        db,
+        existing.id,
+        getNormalizedGrammarExamples(req.body.grammar_examples),
+      );
+      return res.redirect(`/admin/units/${req.params.id}/items`);
+    }
   }
   const itemId = queries.createItem(db, {
     unitId: parseInt(req.params.id),

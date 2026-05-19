@@ -368,6 +368,58 @@ describe('admin single-point item edit routes', () => {
     app.cleanup();
   });
 
+  test('admin adding grammar with an existing title reuses the grammar item and appends examples', async () => {
+    const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
+    const { unitId } = seedItem(app.locals.db, 'word');
+
+    const grammarId = queries.createItem(app.locals.db, {
+      unitId,
+      type: 'grammar',
+      english: '',
+      chinese: '',
+      pos: '',
+      example: '',
+    });
+    queries.saveGrammarDetails(app.locals.db, grammarId, {
+      title: '被动语态',
+      description: '原有说明',
+      usageNotes: '原有规则',
+    });
+    queries.replaceGrammarExamples(app.locals.db, grammarId, [{
+      exampleType: 'completion',
+      promptText: 'The room ____ (clean) every day.',
+      options: [],
+      answerText: 'is cleaned',
+      explanation: '一般现在时被动语态。',
+    }]);
+
+    const res = await requestApp(app, 'POST', `/admin/units/${unitId}/items`, {
+      type: 'grammar',
+      'grammar_detail[title]': '  被动语态  ',
+      'grammar_detail[description]': '更新后的说明',
+      'grammar_detail[usage_notes]': '更新后的规则',
+      'grammar_examples[0][example_type]': 'sentence_transform',
+      'grammar_examples[0][prompt_text]': 'People clean the room every day. 改为被动语态',
+      'grammar_examples[0][options_text]': '',
+      'grammar_examples[0][answer_text]': 'The room is cleaned every day.',
+      'grammar_examples[0][explanation]': '宾语 the room 变主语。',
+    });
+
+    const grammarItems = queries.getItemsByUnit(app.locals.db, unitId)
+      .filter(item => item.type === 'grammar');
+    const detail = queries.getGrammarDetails(app.locals.db, grammarId);
+    const examples = queries.getGrammarExamplesByItem(app.locals.db, grammarId);
+
+    expect(res.statusCode).toBe(302);
+    expect(grammarItems).toHaveLength(1);
+    expect(detail.description).toBe('更新后的说明');
+    expect(detail.usage_notes).toBe('更新后的规则');
+    expect(examples).toHaveLength(2);
+    expect(examples[1].prompt_text).toBe('People clean the room every day. 改为被动语态');
+
+    app.cleanup();
+  });
+
   test('admin can save word question details from item edit', async () => {
     const app = buildApp({ id: 1, username: 'admin', role: 'admin' });
     const { itemId, unitId } = seedItem(app.locals.db, 'word');
