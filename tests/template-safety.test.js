@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const ejs = require('ejs');
 
 const projectRoot = path.join(__dirname, '..');
 
@@ -8,6 +9,25 @@ function read(relativePath) {
 }
 
 describe('review template safety', () => {
+  test('grammar edit template tolerates incomplete example rows', async () => {
+    await expect(ejs.renderFile(path.join(projectRoot, 'views/admin/item-edit.ejs'), {
+      textbook: { id: 1, name: 'Book' },
+      unit: { id: 2, textbook_id: 1, name: 'Unit' },
+      item: { id: 3, unit_id: 2, type: 'grammar', english: '', chinese: '被动语态', pos: '', example: '' },
+      wordQuestionDetail: null,
+      phraseChoiceQuestions: [],
+      sentenceOrderDetail: null,
+      grammarDetail: { title: '被动语态', description: '说明', usage_notes: '规则' },
+      grammarExamples: [null, {
+        example_type: 'sentence_transform',
+        prompt_text: "People don't use this bridge. 改为被动语态",
+        answer_text: 'This bridge is not used.',
+        explanation: "主动句为否定形式：don't use。被动句主语This bridge（单数），否定形式：is + not + used（use的过去分词）。动作发出者不明确，省略by people。",
+      }],
+      error: null,
+    })).resolves.toContain("People don&#39;t use this bridge");
+  });
+
   test('sentence ordering builds selected chips with DOM APIs', () => {
     const exercise = read('views/practice/exercise.ejs');
 

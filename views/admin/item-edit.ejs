@@ -28,13 +28,16 @@
     options: [],
     answer_text: '',
     explanation: '',
-  }]).map((row) => ({
-    example_type: row.example_type || 'choice',
-    prompt_text: row.prompt_text || '',
-    options_text: row.options_text || (Array.isArray(row.options) ? row.options.join('\n') : ''),
-    answer_text: row.answer_text || '',
-    explanation: row.explanation || '',
-  }));
+  }]).map((rawRow) => {
+    const row = rawRow || {};
+    return {
+      example_type: row.example_type || 'choice',
+      prompt_text: row.prompt_text || '',
+      options_text: row.options_text || (Array.isArray(row.options) ? row.options.join('\n') : ''),
+      answer_text: row.answer_text || '',
+      explanation: row.explanation || '',
+    };
+  });
 %>
 
 <p class="mb-1">
