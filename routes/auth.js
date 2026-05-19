@@ -20,6 +20,33 @@ function renderWithLayout(res, view, data, title) {
   });
 }
 
+function getDefaultReturnTo(role) {
+  return role === 'admin' ? '/admin' : '/practice';
+}
+
+function getSafeReturnTo(rawReturnTo, role) {
+  const fallback = getDefaultReturnTo(role);
+  if (!rawReturnTo) return fallback;
+
+  let returnTo;
+  try {
+    returnTo = decodeURIComponent(rawReturnTo);
+  } catch (err) {
+    return fallback;
+  }
+
+  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    return fallback;
+  }
+
+  const pathname = returnTo.split('#')[0].split('?')[0];
+  if (pathname === '/practice/submit') {
+    return '/practice';
+  }
+
+  return returnTo;
+}
+
 // GET /login
 router.get('/login', (req, res) => {
   if (req.session.user) {
@@ -48,11 +75,7 @@ router.post('/login', (req, res) => {
 
   req.session.user = { id: user.id, username: user.username, role: user.role };
 
-  const returnTo = req.body.returnTo
-    ? decodeURIComponent(req.body.returnTo)
-    : user.role === 'admin' ? '/admin' : '/practice';
-
-  res.redirect(returnTo);
+  res.redirect(getSafeReturnTo(req.body.returnTo, user.role));
 });
 
 // GET /register
