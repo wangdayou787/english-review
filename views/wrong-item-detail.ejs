@@ -1,5 +1,15 @@
 <h1>错题详情</h1>
 
+<%
+  const isGrammar = wrongItem.type === 'grammar';
+  const displayTitle = isGrammar
+    ? (wrongItem.grammar_title || wrongItem.chinese || '语法错题')
+    : (wrongItem.english || wrongItem.chinese || '-');
+  const displaySubtitle = isGrammar
+    ? (wrongItem.last_question_text || wrongItem.chinese || wrongItem.english || '-')
+    : (wrongItem.chinese && wrongItem.english ? wrongItem.chinese : (wrongItem.english || '-'));
+%>
+
 <p class="mb-2">
   <a href="/wrong-items" class="btn">返回错题本</a>
   <a href="/practice/wrong" class="btn btn-primary">开始错题专项复习</a>
@@ -11,8 +21,8 @@
       <span class="status-pill status-planned">
         <%= wrongItem.type === 'word' ? '单词' : wrongItem.type === 'phrase' ? '短语' : '语法' %>
       </span>
-      <h2 class="mt-2"><%= wrongItem.english || wrongItem.chinese || '-' %></h2>
-      <p class="text-muted"><%= wrongItem.chinese && wrongItem.english ? wrongItem.chinese : (wrongItem.english || '-') %></p>
+      <h2 class="mt-2"><%= displayTitle %></h2>
+      <p class="text-muted"><%= displaySubtitle %></p>
       <% if (wrongItem.pos) { %>
         <p class="text-muted">词性：<%= wrongItem.pos %></p>
       <% } %>

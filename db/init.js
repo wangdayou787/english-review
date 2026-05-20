@@ -24,10 +24,12 @@ function ensureReviewRecordExerciseTypes(db) {
         exercise_type TEXT    NOT NULL CHECK(exercise_type IN (${getReviewRecordExerciseTypeCheck()})),
         user_answer   TEXT    NOT NULL,
         is_correct    INTEGER NOT NULL CHECK(is_correct IN (0, 1)),
+        grammar_example_id INTEGER REFERENCES grammar_examples(id),
+        question_text TEXT,
         created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
       );
-      INSERT INTO review_records_new (id, user_id, item_id, exercise_type, user_answer, is_correct, created_at)
-      SELECT id, user_id, item_id, exercise_type, user_answer, is_correct, created_at
+      INSERT INTO review_records_new (id, user_id, item_id, exercise_type, user_answer, is_correct, grammar_example_id, question_text, created_at)
+      SELECT id, user_id, item_id, exercise_type, user_answer, is_correct, NULL, NULL, created_at
       FROM review_records;
       DROP TABLE review_records;
       ALTER TABLE review_records_new RENAME TO review_records;
@@ -35,6 +37,16 @@ function ensureReviewRecordExerciseTypes(db) {
       CREATE INDEX IF NOT EXISTS idx_review_user_time ON review_records(user_id, created_at);
     `);
   })();
+}
+
+function ensureReviewRecordQuestionContext(db) {
+  const columns = db.prepare("PRAGMA table_info('review_records')").all().map(row => row.name);
+  if (!columns.includes('grammar_example_id')) {
+    db.prepare('ALTER TABLE review_records ADD COLUMN grammar_example_id INTEGER REFERENCES grammar_examples(id)').run();
+  }
+  if (!columns.includes('question_text')) {
+    db.prepare('ALTER TABLE review_records ADD COLUMN question_text TEXT').run();
+  }
 }
 
 function ensureDailyReviewTasksPlanScopedUnique(db) {
@@ -124,6 +136,8 @@ function initDatabase(db) {
       exercise_type TEXT    NOT NULL CHECK(exercise_type IN (${getReviewRecordExerciseTypeCheck()})),
       user_answer   TEXT    NOT NULL,
       is_correct    INTEGER NOT NULL CHECK(is_correct IN (0, 1)),
+      grammar_example_id INTEGER REFERENCES grammar_examples(id),
+      question_text TEXT,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_review_user_item ON review_records(user_id, item_id);
@@ -352,6 +366,7 @@ function initDatabase(db) {
   // ── Insert default data (idempotent via INSERT OR IGNORE) ─────
 
   ensureReviewRecordExerciseTypes(db);
+  ensureReviewRecordQuestionContext(db);
   ensureDailyReviewTasksPlanScopedUnique(db);
 
   // Default admin account (password: admin123)

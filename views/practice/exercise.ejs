@@ -72,6 +72,9 @@
 
       <input type="hidden" name="answers[<%= idx %>][item_id]" value="<%= ex.item_id %>">
       <input type="hidden" name="answers[<%= idx %>][exercise_type]" value="<%= ex.exercise_type %>">
+      <% if (ex.grammar_example_id) { %>
+        <input type="hidden" name="answers[<%= idx %>][grammar_example_id]" value="<%= ex.grammar_example_id %>">
+      <% } %>
 
       <% if (ex.options) { %>
         <% ex.options.forEach((opt, oi) => { %>

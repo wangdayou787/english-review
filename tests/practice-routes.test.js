@@ -90,6 +90,11 @@ function seedGrammarPlan(db) {
     pos: '',
     example: '',
   });
+  queries.saveGrammarDetails(db, grammarId, {
+    title: 'Simple past',
+    description: 'Past action.',
+    usageNotes: 'Use with yesterday.',
+  });
   queries.replaceGrammarExamples(db, grammarId, [{
     exampleType: 'completion',
     promptText: 'He ____ (buy) a bike yesterday.',
@@ -139,6 +144,7 @@ function seedGrammarPlan(db) {
       displayOptions: {},
     },
   ]);
+  return { grammarId, unitId };
 }
 
 describe('practice routes', () => {
@@ -211,6 +217,27 @@ describe('practice routes', () => {
     expect(res.text).toContain('He ____ (buy) a bike yesterday.');
     expect(res.text).toContain('语法完成句子');
 
+    app.cleanup();
+  });
+
+  test('practice submit stores grammar example context for wrong-answer notebook display', async () => {
+    const app = buildApp({ id: 2, username: 'student', role: 'user' });
+    const { grammarId } = seedGrammarPlan(app.locals.db);
+    const [example] = queries.getGrammarExamplesByItem(app.locals.db, grammarId);
+
+    const submitRes = await requestApp(app, 'POST', '/practice/submit', {
+      'answers[0][item_id]': String(grammarId),
+      'answers[0][exercise_type]': 'grammar_completion',
+      'answers[0][grammar_example_id]': String(example.id),
+      'answers[0][answer]': 'buy',
+    });
+    const wrongRes = await requestApp(app, 'GET', '/wrong-items?type=grammar');
+
+    expect(submitRes.statusCode).toBe(200);
+    expect(wrongRes.statusCode).toBe(200);
+    expect(wrongRes.text).toContain('Simple past');
+    expect(wrongRes.text).toContain('He ____ (buy) a bike yesterday.');
+    expect(wrongRes.text).not.toContain('<h2>-</h2>');
     app.cleanup();
   });
 

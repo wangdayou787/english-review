@@ -58,10 +58,16 @@ function shuffle(values) {
   return shuffled;
 }
 
-function pickGrammarExample(support, exerciseType, random = Math.random) {
+function pickGrammarExample(support, exerciseType, options = {}) {
   const exampleType = getGrammarExampleTypeForQuestionCode(exerciseType);
   const examples = (support.grammarExamples || []).filter(example => example.example_type === exampleType);
   if (examples.length === 0) return null;
+  const requestedId = Number(options.grammarExampleId);
+  if (Number.isInteger(requestedId) && requestedId > 0) {
+    const requested = examples.find(example => example.id === requestedId);
+    if (requested) return requested;
+  }
+  const random = options.random || Math.random;
   const index = Math.min(examples.length - 1, Math.floor(random() * examples.length));
   return examples[index];
 }
@@ -172,10 +178,11 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
       };
     }
     case 'grammar_choice': {
-      const row = pickGrammarExample(singlePointSupport, exerciseType, options.random || Math.random);
+      const row = pickGrammarExample(singlePointSupport, exerciseType, options);
       if (!row) return createExercise(item, 'sentence', db, {}, singlePointSupport, options);
       return {
         ...base,
+        grammar_example_id: row.id,
         question: row.prompt_text,
         correct_answer: row.answer_text,
         options: shuffle(row.options || []),
@@ -184,10 +191,11 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
     }
     case 'grammar_completion':
     case 'grammar_sentence_transform': {
-      const row = pickGrammarExample(singlePointSupport, exerciseType, options.random || Math.random);
+      const row = pickGrammarExample(singlePointSupport, exerciseType, options);
       if (!row) return createExercise(item, 'sentence', db, {}, singlePointSupport, options);
       return {
         ...base,
+        grammar_example_id: row.id,
         question: row.prompt_text,
         correct_answer: row.answer_text,
         explanation: row.explanation || '',
@@ -198,10 +206,12 @@ function createExercise(item, exerciseType, db, template = {}, support = null, o
   }
 }
 
-function resolveAnswerMetadata(item, exerciseType, db, support = null) {
-  const exercise = createExercise(item, exerciseType, db, {}, support);
+function resolveAnswerMetadata(item, exerciseType, db, support = null, options = {}) {
+  const exercise = createExercise(item, exerciseType, db, {}, support, options);
   return {
     exercise_type: exercise.exercise_type,
+    grammar_example_id: exercise.grammar_example_id || null,
+    question: exercise.question || '',
     correct_answer: exercise.correct_answer || '',
     explanation: exercise.explanation || '',
   };

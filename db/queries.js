@@ -345,13 +345,34 @@ function getWrongItemsForUser(db, userId, options = {}) {
        items.chinese,
        items.pos,
        items.example,
+       grammar_details.title AS grammar_title,
+       COALESCE(
+         latest_records.question_text,
+         grammar_examples.prompt_text,
+         (
+           SELECT fallback_examples.prompt_text
+           FROM grammar_examples fallback_examples
+           WHERE fallback_examples.item_id = items.id
+             AND fallback_examples.example_type = CASE latest_records.exercise_type
+               WHEN 'grammar_choice' THEN 'choice'
+               WHEN 'grammar_completion' THEN 'completion'
+               WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
+               ELSE ''
+             END
+           ORDER BY fallback_examples.sort_order, fallback_examples.id
+           LIMIT 1
+         )
+       ) AS last_question_text,
        wrong_counts.wrong_count,
        latest_records.created_at AS last_wrong_at,
        latest_records.user_answer AS last_user_answer,
-       latest_records.exercise_type AS last_exercise_type
+       latest_records.exercise_type AS last_exercise_type,
+       latest_records.grammar_example_id AS last_grammar_example_id
      FROM latest_records
      JOIN items ON items.id = latest_records.item_id
      JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
+     LEFT JOIN grammar_details ON grammar_details.item_id = items.id
+     LEFT JOIN grammar_examples ON grammar_examples.id = latest_records.grammar_example_id
      LEFT JOIN item_mastery
        ON item_mastery.user_id = latest_records.user_id
       AND item_mastery.item_id = latest_records.item_id
@@ -431,13 +452,34 @@ function getWrongItemDetailForUser(db, userId, itemId) {
        items.chinese,
        items.pos,
        items.example,
+       grammar_details.title AS grammar_title,
+       COALESCE(
+         latest_records.question_text,
+         grammar_examples.prompt_text,
+         (
+           SELECT fallback_examples.prompt_text
+           FROM grammar_examples fallback_examples
+           WHERE fallback_examples.item_id = items.id
+             AND fallback_examples.example_type = CASE latest_records.exercise_type
+               WHEN 'grammar_choice' THEN 'choice'
+               WHEN 'grammar_completion' THEN 'completion'
+               WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
+               ELSE ''
+             END
+           ORDER BY fallback_examples.sort_order, fallback_examples.id
+           LIMIT 1
+         )
+       ) AS last_question_text,
        wrong_counts.wrong_count,
        latest_records.created_at AS last_wrong_at,
        latest_records.user_answer AS last_user_answer,
-       latest_records.exercise_type AS last_exercise_type
+       latest_records.exercise_type AS last_exercise_type,
+       latest_records.grammar_example_id AS last_grammar_example_id
      FROM latest_records
      JOIN items ON items.id = latest_records.item_id
      JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
+     LEFT JOIN grammar_details ON grammar_details.item_id = items.id
+     LEFT JOIN grammar_examples ON grammar_examples.id = latest_records.grammar_example_id
      LEFT JOIN item_mastery
        ON item_mastery.user_id = latest_records.user_id
       AND item_mastery.item_id = latest_records.item_id

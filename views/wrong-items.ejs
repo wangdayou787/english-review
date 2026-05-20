@@ -30,13 +30,22 @@
 <% } else { %>
   <div class="wrong-item-list">
     <% wrongItems.forEach(item => { %>
+      <%
+        const isGrammar = item.type === 'grammar';
+        const displayTitle = isGrammar
+          ? (item.grammar_title || item.chinese || '语法错题')
+          : (item.english || item.chinese || '-');
+        const displaySubtitle = isGrammar
+          ? (item.last_question_text || item.chinese || item.english || '-')
+          : (item.chinese && item.english ? item.chinese : (item.english || '-'));
+      %>
       <article class="wrong-item-row">
         <div class="wrong-item-main">
           <span class="status-pill status-planned">
             <%= item.type === 'word' ? '单词' : item.type === 'phrase' ? '短语' : '语法' %>
           </span>
-          <h2><%= item.english || item.chinese %></h2>
-          <p class="text-muted"><%= item.chinese && item.english ? item.chinese : (item.english || '-') %></p>
+          <h2><%= displayTitle %></h2>
+          <p class="text-muted"><%= displaySubtitle %></p>
         </div>
         <div class="wrong-item-meta">
           <strong><%= item.wrong_count %></strong>

@@ -110,12 +110,16 @@ function scoreAnswers(items, answers, options = {}) {
     }
 
     const metadata = options.db
-      ? resolveAnswerMetadata(item, answer.exercise_type, options.db, getSinglePointSupport(item, options.db))
+      ? resolveAnswerMetadata(item, answer.exercise_type, options.db, getSinglePointSupport(item, options.db), {
+        grammarExampleId: answer.grammar_example_id,
+      })
       : getDefaultAnswerMetadata(item, answer);
 
     const exerciseType = metadata.exercise_type || answer.exercise_type;
     const result = scoreAnswer(item, exerciseType, answer.answer, metadata.correct_answer);
     if (metadata.explanation) result.explanation = metadata.explanation;
+    if (metadata.grammar_example_id) result.grammar_example_id = metadata.grammar_example_id;
+    if (metadata.question) result.question = metadata.question;
     results.push(result);
     if (result.is_correct) totalCorrect++;
   }

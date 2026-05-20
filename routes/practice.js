@@ -279,6 +279,7 @@ router.post('/practice/submit', (req, res) => {
     answers = rawAnswers.map(a => ({
       item_id: parseInt(a.item_id),
       exercise_type: a.exercise_type,
+      grammar_example_id: parseItemId(a.grammar_example_id),
       answer: a.answer || '',
     }));
   } else if (rawAnswers) {
@@ -286,6 +287,7 @@ router.post('/practice/submit', (req, res) => {
     answers = [{
       item_id: parseInt(rawAnswers.item_id),
       exercise_type: rawAnswers.exercise_type,
+      grammar_example_id: parseItemId(rawAnswers.grammar_example_id),
       answer: rawAnswers.answer || '',
     }];
   }
@@ -301,11 +303,23 @@ router.post('/practice/submit', (req, res) => {
 
   // Write review records
   const insertRecord = db.prepare(
-    `INSERT INTO review_records (user_id, item_id, exercise_type, user_answer, is_correct, created_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    `INSERT INTO review_records (
+       user_id, item_id, exercise_type, user_answer, is_correct,
+       grammar_example_id, question_text, created_at
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
   );
   for (const r of result.results) {
-    insertRecord.run(userId, r.item_id, answers.find(a => a.item_id === r.item_id)?.exercise_type || 'en2cn', r.user_answer, r.is_correct ? 1 : 0);
+    const submittedAnswer = answers.find(a => a.item_id === r.item_id);
+    insertRecord.run(
+      userId,
+      r.item_id,
+      submittedAnswer?.exercise_type || 'en2cn',
+      r.user_answer,
+      r.is_correct ? 1 : 0,
+      r.grammar_example_id || submittedAnswer?.grammar_example_id || null,
+      r.question || null,
+    );
   }
 
   // Update check-in counts

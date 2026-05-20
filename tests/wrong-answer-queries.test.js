@@ -98,6 +98,39 @@ describe('wrong answer query helpers', () => {
     db.close();
   });
 
+  test('includes grammar title and latest question text for grammar wrong items', () => {
+    const { db, userId, grammarId } = setupDb();
+    queries.saveGrammarDetails(db, grammarId, {
+      title: 'Passive voice',
+      description: 'Use be plus past participle.',
+      usageNotes: 'Match tense and subject.',
+    });
+    queries.replaceGrammarExamples(db, grammarId, [{
+      exampleType: 'completion',
+      promptText: 'This song ____ (love) by many people.',
+      options: [],
+      answerText: 'is loved',
+      explanation: 'passive voice',
+    }]);
+    const [example] = queries.getGrammarExamplesByItem(db, grammarId);
+    db.prepare(
+      `INSERT INTO review_records (
+         user_id, item_id, exercise_type, user_answer, is_correct,
+         grammar_example_id, question_text, created_at
+       )
+       VALUES (?, ?, 'grammar_completion', 'love', 0, ?, ?, datetime('now'))`
+    ).run(userId, grammarId, example.id, example.prompt_text);
+
+    const [wrongItem] = queries.getWrongItemsForUser(db, userId, { type: 'grammar' });
+    const detail = queries.getWrongItemDetailForUser(db, userId, grammarId);
+
+    expect(wrongItem.grammar_title).toBe('Passive voice');
+    expect(wrongItem.last_question_text).toBe('This song ____ (love) by many people.');
+    expect(detail.grammar_title).toBe('Passive voice');
+    expect(detail.last_question_text).toBe('This song ____ (love) by many people.');
+    db.close();
+  });
+
   test('excludes mastered items from the current wrong set', () => {
     const { db, userId, wordId } = setupDb();
     record(db, userId, wordId, false, 'wrong');
