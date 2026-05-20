@@ -131,6 +131,43 @@ describe('wrong answer query helpers', () => {
     db.close();
   });
 
+  test('infers historical grammar wrong question from matching answer text when no context was stored', () => {
+    const { db, userId, grammarId } = setupDb();
+    queries.saveGrammarDetails(db, grammarId, {
+      title: 'Passive voice',
+      description: 'Use be plus past participle.',
+      usageNotes: 'Match tense and subject.',
+    });
+    queries.replaceGrammarExamples(db, grammarId, [{
+      exampleType: 'completion',
+      promptText: 'People do not use this bridge. Change into passive.',
+      options: [],
+      answerText: 'is not used',
+      explanation: 'bridge is singular',
+    }, {
+      exampleType: 'completion',
+      promptText: 'The classroom is cleaned by students. Change into active.',
+      options: [],
+      answerText: 'clean the classroom',
+      explanation: 'students perform the action',
+    }]);
+    db.prepare(
+      `INSERT INTO review_records (
+         user_id, item_id, exercise_type, user_answer, is_correct, created_at
+       )
+       VALUES (?, ?, 'grammar_completion', 'clean the classroom', 0, datetime('now'))`
+    ).run(userId, grammarId);
+
+    const [wrongItem] = queries.getWrongItemsForUser(db, userId, { type: 'grammar' });
+    const detail = queries.getWrongItemDetailForUser(db, userId, grammarId);
+
+    expect(wrongItem.last_question_text).toBe('The classroom is cleaned by students. Change into active.');
+    expect(wrongItem.last_grammar_example_id).toBe(2);
+    expect(detail.last_question_text).toBe('The classroom is cleaned by students. Change into active.');
+    expect(detail.last_grammar_example_id).toBe(2);
+    db.close();
+  });
+
   test('excludes mastered items from the current wrong set', () => {
     const { db, userId, wordId } = setupDb();
     record(db, userId, wordId, false, 'wrong');

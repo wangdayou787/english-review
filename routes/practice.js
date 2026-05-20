@@ -133,7 +133,9 @@ router.get('/wrong-items/:itemId', (req, res) => {
   const answerMetadata = resolveAnswerMetadata(
     { ...wrongItem, id: wrongItem.item_id },
     wrongItem.last_exercise_type,
-    db
+    db,
+    null,
+    { grammarExampleId: wrongItem.last_grammar_example_id }
   );
   const history = queries.getReviewHistoryForUserItem(db, userId, itemId, { limit: 10 });
 

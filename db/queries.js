@@ -359,7 +359,13 @@ function getWrongItemsForUser(db, userId, options = {}) {
                WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
                ELSE ''
              END
-           ORDER BY fallback_examples.sort_order, fallback_examples.id
+           ORDER BY
+             CASE
+               WHEN lower(trim(fallback_examples.answer_text)) = lower(trim(latest_records.user_answer)) THEN 0
+               ELSE 1
+             END,
+             fallback_examples.sort_order,
+             fallback_examples.id
            LIMIT 1
          )
        ) AS last_question_text,
@@ -367,7 +373,28 @@ function getWrongItemsForUser(db, userId, options = {}) {
        latest_records.created_at AS last_wrong_at,
        latest_records.user_answer AS last_user_answer,
        latest_records.exercise_type AS last_exercise_type,
-       latest_records.grammar_example_id AS last_grammar_example_id
+       COALESCE(
+         latest_records.grammar_example_id,
+         (
+           SELECT fallback_examples.id
+           FROM grammar_examples fallback_examples
+           WHERE fallback_examples.item_id = items.id
+             AND fallback_examples.example_type = CASE latest_records.exercise_type
+               WHEN 'grammar_choice' THEN 'choice'
+               WHEN 'grammar_completion' THEN 'completion'
+               WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
+               ELSE ''
+             END
+           ORDER BY
+             CASE
+               WHEN lower(trim(fallback_examples.answer_text)) = lower(trim(latest_records.user_answer)) THEN 0
+               ELSE 1
+             END,
+             fallback_examples.sort_order,
+             fallback_examples.id
+           LIMIT 1
+         )
+       ) AS last_grammar_example_id
      FROM latest_records
      JOIN items ON items.id = latest_records.item_id
      JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
@@ -466,7 +493,13 @@ function getWrongItemDetailForUser(db, userId, itemId) {
                WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
                ELSE ''
              END
-           ORDER BY fallback_examples.sort_order, fallback_examples.id
+           ORDER BY
+             CASE
+               WHEN lower(trim(fallback_examples.answer_text)) = lower(trim(latest_records.user_answer)) THEN 0
+               ELSE 1
+             END,
+             fallback_examples.sort_order,
+             fallback_examples.id
            LIMIT 1
          )
        ) AS last_question_text,
@@ -474,7 +507,28 @@ function getWrongItemDetailForUser(db, userId, itemId) {
        latest_records.created_at AS last_wrong_at,
        latest_records.user_answer AS last_user_answer,
        latest_records.exercise_type AS last_exercise_type,
-       latest_records.grammar_example_id AS last_grammar_example_id
+       COALESCE(
+         latest_records.grammar_example_id,
+         (
+           SELECT fallback_examples.id
+           FROM grammar_examples fallback_examples
+           WHERE fallback_examples.item_id = items.id
+             AND fallback_examples.example_type = CASE latest_records.exercise_type
+               WHEN 'grammar_choice' THEN 'choice'
+               WHEN 'grammar_completion' THEN 'completion'
+               WHEN 'grammar_sentence_transform' THEN 'sentence_transform'
+               ELSE ''
+             END
+           ORDER BY
+             CASE
+               WHEN lower(trim(fallback_examples.answer_text)) = lower(trim(latest_records.user_answer)) THEN 0
+               ELSE 1
+             END,
+             fallback_examples.sort_order,
+             fallback_examples.id
+           LIMIT 1
+         )
+       ) AS last_grammar_example_id
      FROM latest_records
      JOIN items ON items.id = latest_records.item_id
      JOIN wrong_counts ON wrong_counts.item_id = latest_records.item_id
