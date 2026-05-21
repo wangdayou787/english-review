@@ -191,6 +191,7 @@ function saveCurrentPageAnswers() {
     stored[fields.item_id.value] = {
       item_id: fields.item_id.value,
       exercise_type: fields.exercise_type.value,
+      grammar_example_id: fields.grammar_example_id ? fields.grammar_example_id.value : '',
       answer: getAnswerValue(fields),
     };
   });
@@ -238,6 +239,7 @@ function appendStoredAnswersForSubmit(event) {
     storedAnswers.forEach((answer, index) => {
       appendHiddenInput(exerciseForm, `answers[${index}][item_id]`, answer.item_id);
       appendHiddenInput(exerciseForm, `answers[${index}][exercise_type]`, answer.exercise_type);
+      appendHiddenInput(exerciseForm, `answers[${index}][grammar_example_id]`, answer.grammar_example_id);
       appendHiddenInput(exerciseForm, `answers[${index}][answer]`, answer.answer);
     });
     setTimeout(() => sessionStorage.removeItem(answerStorageKey), 0);

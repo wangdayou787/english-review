@@ -84,6 +84,14 @@ describe('review template safety', () => {
     expect(exercise).not.toContain('<button type="submit" class="primary-action">提交答案</button>');
   });
 
+  test('paginated practice preserves grammar example ids through final submit', () => {
+    const exercise = read('views/practice/exercise.ejs');
+
+    expect(exercise).toContain('grammar_example_id: fields.grammar_example_id');
+    expect(exercise).toContain('answers[${index}][grammar_example_id]');
+    expect(exercise).toContain('answer.grammar_example_id');
+  });
+
   test('question type settings no longer exposes hint text inputs', () => {
     const questionTypes = read('views/admin/question-types.ejs');
 
