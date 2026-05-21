@@ -224,9 +224,14 @@ describe('plan-aware daily scheduler', () => {
     db.close();
   });
 
-  test('weekday does not replace a small review pool with extra new content', () => {
+  test('weekday fills a small previous-day review pool from older reviewed content before adding extra new content', () => {
     const { db, planId, userId } = setup();
 
+    scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-12', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
     scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-13', {
       daily_words: 2,
       daily_phrases: 0,
@@ -240,8 +245,36 @@ describe('plan-aware daily scheduler', () => {
     });
 
     expect(thursday.words.filter(item => item.source_type === 'new')).toHaveLength(1);
-    expect(thursday.words.filter(item => item.source_type === 'recent_review')).toHaveLength(2);
-    expect(thursday.words).toHaveLength(3);
+    expect(thursday.words.filter(item => item.source_type === 'recent_review')).toHaveLength(5);
+    expect(thursday.words).toHaveLength(6);
+    db.close();
+  });
+
+  test('weekday new content excludes any item already assigned earlier in the plan', () => {
+    const { db, planId, userId } = setup();
+
+    const monday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-11', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+    scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-12', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+    const wednesday = scheduler.getOrCreateDailyReviewTasks(db, userId, planId, '2026-05-13', {
+      daily_words: 6,
+      daily_phrases: 0,
+      daily_grammar: 0,
+    });
+
+    const mondayIds = new Set(monday.words.map(item => item.id));
+    const newFromWednesday = wednesday.words.filter(item => item.source_type === 'new');
+
+    expect(newFromWednesday).toHaveLength(1);
+    expect(newFromWednesday.every(item => !mondayIds.has(item.id))).toBe(true);
+    expect(wednesday.words).toHaveLength(6);
     db.close();
   });
 

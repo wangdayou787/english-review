@@ -192,18 +192,21 @@ function getWrongItemIds(db, userId, itemIds) {
   );
 }
 
-function selectPlanItemsForType({ candidates, reviewPoolItems, wrongIds, knownIds, quota, dayRole }) {
+function selectPlanItemsForType({ candidates, reviewPoolItems, priorTaskItems, wrongIds, knownIds, quota, dayRole }) {
   const available = candidates.filter(item => !knownIds.has(item.id));
   if (quota <= 0 || available.length === 0) return [];
 
   const availableIds = new Set(available.map(item => item.id));
+  const priorTaskIds = new Set(priorTaskItems.map(item => item.id));
   const reviewPoolIds = new Set(reviewPoolItems.map(item => item.id));
-  const newItems = available.filter(item => !reviewPoolIds.has(item.id));
+  const newItems = available.filter(item => !priorTaskIds.has(item.id));
   const wrongItems = available.filter(item => wrongIds.has(item.id));
   const reviewItems = uniqueById([
     ...wrongItems,
     ...reviewPoolItems.filter(item => item.type === available[0].type && availableIds.has(item.id)),
   ]);
+  const historicalReviewItems = priorTaskItems
+    .filter(item => item.type === available[0].type && availableIds.has(item.id));
 
   if (dayRole === 'weekend') {
     const weekendPool = reviewPoolItems.length > 0
@@ -227,7 +230,23 @@ function selectPlanItemsForType({ candidates, reviewPoolItems, wrongIds, knownId
     .slice(0, newTarget)
     .map(item => ({ ...item, source_type: 'new' }));
 
-  return [...selectedNew, ...selectedReview].slice(0, quota);
+  const selectedAfterTargets = [...selectedNew, ...selectedReview];
+  if (selectedAfterTargets.length >= quota) return selectedAfterTargets.slice(0, quota);
+
+  const fillerIds = new Set(selectedAfterTargets.map(item => item.id));
+  const fillerItems = uniqueById([
+    ...reviewItems,
+    ...historicalReviewItems,
+    ...available,
+  ])
+    .filter(item => !fillerIds.has(item.id))
+    .slice(0, quota - selectedAfterTargets.length)
+    .map(item => ({
+      ...item,
+      source_type: wrongIds.has(item.id) ? 'wrong' : reviewPoolIds.has(item.id) || priorTaskIds.has(item.id) ? 'recent_review' : 'new',
+    }));
+
+  return [...selectedAfterTargets, ...fillerItems].slice(0, quota);
 }
 
 function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
@@ -238,6 +257,7 @@ function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
   const reviewPoolItems = dayRole === 'weekend'
     ? queries.getReviewTaskItemsBetweenDates(db, userId, planId, weekdayRange.startDate, weekdayRange.endDate)
     : queries.getRecentReviewTaskItems(db, userId, planId, 1);
+  const priorTaskItems = queries.getReviewTaskItemsBeforeDate(db, userId, planId, taskDate);
   const wrongIds = getWrongItemIds(db, userId, planItems.map(item => item.id));
 
   const byType = {
@@ -250,6 +270,7 @@ function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
     words: selectPlanItemsForType({
       candidates: byType.words,
       reviewPoolItems,
+      priorTaskItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_words, 10) || 0,
@@ -258,6 +279,7 @@ function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
     phrases: selectPlanItemsForType({
       candidates: byType.phrases,
       reviewPoolItems,
+      priorTaskItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_phrases, 10) || 0,
@@ -266,6 +288,7 @@ function buildDailyReviewTaskSelection(db, userId, planId, taskDate, quotas) {
     grammar: selectPlanItemsForType({
       candidates: byType.grammar,
       reviewPoolItems,
+      priorTaskItems,
       wrongIds,
       knownIds,
       quota: parseInt(quotas.daily_grammar, 10) || 0,
